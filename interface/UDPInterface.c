@@ -16,10 +16,11 @@
 #include "interface/Interface.h"
 #include "interface/MultiInterface.h"
 #include "interface/UDPInterface.h"
-#include "interface/UDPInterfaceBase.h"
+#include "interface/addressable/UDPAddrInterface.h"
 #include "interface/UDPInterface_pvt.h"
 #include "memory/Allocator.h"
 #include "interface/InterfaceController.h"
+#include "util/platform/Sockaddr.h"
 #include "wire/Message.h"
 
 int UDPInterface_beginConnection(const char* address,
@@ -28,13 +29,11 @@ int UDPInterface_beginConnection(const char* address,
                                  struct UDPInterface* udp)
 {
     struct UDPInterface_pvt* udpif = (struct UDPInterface_pvt*) udp;
-    struct sockaddr_storage addr;
-    int addrLen = sizeof(struct sockaddr_storage);
-    Bits_memset(&addr, 0, addrLen);
-    if (AddrTools_parseSockaddrPort(address, &addr, &addrLen)) {
+    struct Sockaddr_storage addr;
+    if (Sockaddr_parse(address, &addr)) {
         return UDPInterface_beginConnection_BAD_ADDRESS;
     }
-    if (addrLen != udpif->addrLen) {
+    if (addr.addr.addrLen != udp->addr->addrLen) {
         return UDPInterface_beginConnection_ADDRESS_MISMATCH;
     }
 
@@ -56,24 +55,27 @@ int UDPInterface_beginConnection(const char* address,
     return 0;
 }
 
-struct UDPInterface* UDPInterface_new(struct event_base* base,
-                                      const char* bindAddr,
+struct UDPInterface* UDPInterface_new(struct EventBase* base,
+                                      struct Sockaddr* bindAddr,
                                       struct Allocator* allocator,
                                       struct Except* exHandler,
                                       struct Log* logger,
                                       struct InterfaceController* ic)
 {
-    struct UDPInterfaceBase* udpBase =
-        UDPInterfaceBase_new(base, bindAddr, allocator, exHandler, logger);
+    struct AddrInterface* udpBase =
+        UDPAddrInterface_new(base, bindAddr, allocator, exHandler, logger);
 
     struct UDPInterface_pvt* context = Allocator_malloc(allocator, sizeof(struct UDPInterface_pvt));
     Bits_memcpyConst(context, (&(struct UDPInterface_pvt) {
-        .udbBase = udpBase,
+        .pub = {
+            .addr = udpBase->addr
+        },
+        .udpBase = udpBase,
         .logger = logger,
         .ic = ic
     }), sizeof(struct UDPInterface_pvt));
 
-    context->multiIface = MultiInterface_new(context->addrLen, &udpBase->pub.generic, ic);
+    context->multiIface = MultiInterface_new(context->pub.addr->addrLen, &udpBase->generic, ic);
 
     return &context->pub;
 }

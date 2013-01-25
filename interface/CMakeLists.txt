@@ -47,5 +47,7 @@ add_library(cjdns-interface-pipeinterface
     PipeInterface.c
 )
 
+add_subdirectory(addressable)
+
 enable_testing()
 add_subdirectory(test)

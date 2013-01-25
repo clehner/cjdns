@@ -33,6 +33,7 @@
 #include "memory/Allocator.h"
 #include "memory/BufferAllocator.h"
 #include "switch/LabelSplicer.h"
+#include "util/events/EventBase.h"
 #include "util/AverageRoller.h"
 #include "util/Bits.h"
 #include "util/Endian.h"
@@ -43,7 +44,6 @@
 #include "util/platform/libc/string.h"
 
 #include <stdint.h>
-#include <event2/event.h>
 #include <stdbool.h>
 
 /*
@@ -222,7 +222,7 @@ static void pingNode(Dict* input, void* vrouter, String* txid);
 struct RouterModule* RouterModule_register(struct DHTModuleRegistry* registry,
                                            struct Allocator* allocator,
                                            const uint8_t myAddress[Address_KEY_SIZE],
-                                           struct event_base* eventBase,
+                                           struct EventBase* eventBase,
                                            struct Log* logger,
                                            struct Admin* admin,
                                            struct Random* rand)

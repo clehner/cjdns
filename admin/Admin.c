@@ -13,15 +13,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "admin/Admin.h"
-#include "admin/angel/Angel.h"
+//#include "admin/angel/Angel.h"
 #include "benc/String.h"
 #include "benc/Dict.h"
-#include "benc/List.h"
+//#include "benc/List.h"
 #include "benc/serialization/BencSerializer.h"
 #include "benc/serialization/standard/StandardBencSerializer.h"
-#include "dht/CJDHTConstants.h"
-#include "exception/Except.h"
-#include "interface/Interface.h"
+//#include "dht/CJDHTConstants.h"
+//#include "exception/Except.h"
+#include "interface/addressable/AddrInterface.h"
 #include "io/Reader.h"
 #include "io/ArrayReader.h"
 #include "io/ArrayWriter.h"
@@ -32,9 +32,11 @@
 #include "util/Bits.h"
 #include "util/Hex.h"
 #include "util/log/Log.h"
-#include "util/Security.h"
+//#include "util/Security.h"
 #include "util/Time.h"
-#include "util/Timeout.h"
+#include "util/Identity.h"
+//#include "util/Timeout.h"
+#include "util/platform/Sockaddr.h"
 
 #define string_strstr
 #define string_strcmp
@@ -42,9 +44,9 @@
 #include "util/platform/libc/string.h"
 
 #include <crypto_hash_sha256.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <unistd.h>
+//#include <limits.h>
+//#include <stdbool.h>
+//#include <unistd.h>
 
 #ifdef WIN32
     #define EWOULDBLOCK WSAEWOULDBLOCK
@@ -79,19 +81,23 @@ struct Admin
     String* password;
     struct Log* logger;
 
-    struct Interface* toAngelInterface;
+    struct AddrInterface* iface;
+
+    /** Length of addresses of clients which communicate with admin. */
+    uint32_t addrLen;
+
+    Identity
 };
 
-static void sendMessage(struct Message* message, uint32_t channelNum, struct Admin* admin)
+static void sendMessage(struct Message* message, struct Sockaddr* dest, struct Admin* admin)
 {
     // stack overflow when used with admin logger.
     //Log_keys(admin->logger, "sending message to angel [%s]", message->bytes);
-    Message_shift(message, 4);
-    Bits_memcpyConst(message->bytes, &channelNum, 4);
-    admin->toAngelInterface->sendMessage(message, admin->toAngelInterface);
+    Message_push(message, dest, dest->addrLen);
+    admin->iface->generic.sendMessage(message, &admin->iface->generic);
 }
 
-static int sendBenc(Dict* message, uint32_t channelNum, struct Admin* admin)
+static int sendBenc(Dict* message, struct Sockaddr* dest, struct Admin* admin)
 {
     struct Allocator* allocator;
     BufferAllocator_STACK(allocator, 256);
@@ -109,13 +115,8 @@ static int sendBenc(Dict* message, uint32_t channelNum, struct Admin* admin)
         .length = w->bytesWritten(w),
         .padding = SEND_MESSAGE_PADDING
     };
-    sendMessage(&m, channelNum, admin);
+    sendMessage(&m, dest, admin);
     return 0;
-}
-
-int Admin_sendMessageToAngel(Dict* message, struct Admin* admin)
-{
-    return sendBenc(message, 0xFFFFFFFF, admin);
 }
 
 /**
@@ -126,24 +127,25 @@ int Admin_sendMessage(Dict* message, String* txid, struct Admin* admin)
     if (!admin) {
         return 0;
     }
-    Assert_true(txid && txid->len >= 4);
+    Identity_check(admin);
+    Assert_true(txid && txid->len >= admin->addrLen);
 
-    uint32_t channelNum;
-    Bits_memcpyConst(&channelNum, txid->bytes, 4);
+    struct Sockaddr_storage addr;
+    Bits_memcpy(&addr, txid->bytes, admin->addrLen);
 
     struct Allocator* allocator;
     BufferAllocator_STACK(allocator, 256);
 
     // Bounce back the user-supplied txid.
     String userTxid = {
-        .bytes = txid->bytes + 4,
-        .len = txid->len - 4
+        .bytes = txid->bytes + admin->addrLen,
+        .len = txid->len - admin->addrLen
     };
-    if (txid->len > 4) {
+    if (txid->len > admin->addrLen) {
         Dict_putString(message, TXID, &userTxid, allocator);
     }
 
-    return sendBenc(message, channelNum, admin);
+    return sendBenc(message, &addr.addr, admin);
 }
 
 static inline bool authValid(Dict* message, struct Message* messageBytes, struct Admin* admin)
@@ -213,11 +215,11 @@ static bool checkArgs(Dict* args, struct Function* func, String* txid, struct Ad
 
 static void handleRequest(Dict* messageDict,
                           struct Message* message,
-                          uint32_t channelId,
+                          struct Sockaddr* src,
                           struct Allocator* allocator,
                           struct Admin* admin)
 {
-    String* query = Dict_getString(messageDict, CJDHTConstants_QUERY);
+    String* query = Dict_getString(messageDict, String_CONST("q"));
     if (!query) {
         Log_info(admin->logger, "Got a non-query from admin interface");
         return;
@@ -225,11 +227,11 @@ static void handleRequest(Dict* messageDict,
 
     // txid becomes the user supplied txid combined with the channel num.
     String* userTxid = Dict_getString(messageDict, TXID);
-    uint32_t txidlen = ((userTxid) ? userTxid->len : 0) + 4;
+    uint32_t txidlen = ((userTxid) ? userTxid->len : 0) + src->addrLen;
     String* txid = String_newBinary(NULL, txidlen, allocator);
-    Bits_memcpyConst(txid->bytes, &channelId, 4);
+    Bits_memcpy(txid->bytes, src, src->addrLen);
     if (userTxid) {
-        Bits_memcpy(txid->bytes + 4, userTxid->bytes, userTxid->len);
+        Bits_memcpy(txid->bytes + src->addrLen, userTxid->bytes, userTxid->len);
     }
 
     // If they're asking for a cookie then lets give them one.
@@ -295,77 +297,14 @@ static void handleRequest(Dict* messageDict,
     return;
 }
 
-#define handleFrame_PARTIAL 1 // got a valid partial request.
-#define handleFrame_INVALID 2 // invalid request.
-#define handleFrame_CONTINUE 0 // parsed frame, keep parsing to get next frame.
-static int handleFrame(struct Message* message,
-                       uint32_t channelId,
-                       struct Allocator* tempAlloc,
-                       struct Admin* admin)
-{
-    struct Reader* reader = ArrayReader_new(message->bytes, message->length, tempAlloc);
-
-    char nextByte;
-    int ret;
-    while (!(ret = reader->read(&nextByte, 1, reader)) && nextByte != 'd');
-
-    if (ret) {
-        return handleFrame_INVALID;
-    }
-
-    // back the reader up by 1.
-    reader->skip(-1, reader);
-
-    Dict messageDict;
-    ret = StandardBencSerializer_get()->parseDictionary(reader, tempAlloc, &messageDict);
-    if (ret == -2) {
-        // couldn't parse any more data.
-        return handleFrame_PARTIAL;
-    }
-    if (ret) {
-        Log_warn(admin->logger,
-                 "Got unparsable data from admin interface on channel [%u] content: [%s].",
-                 channelId, message->bytes);
-        return handleFrame_INVALID;
-    }
-
-    uint32_t amount = reader->bytesRead(reader);
-
-    struct Message tmpMessage = { .bytes = message->bytes, .length = amount, .padding = 0 };
-    handleRequest(&messageDict, &tmpMessage, channelId, tempAlloc, admin);
-
-    Message_shift(message, -amount);
-    return handleFrame_CONTINUE;
-}
-
 static void handleMessage(struct Message* message,
-                          uint32_t channelId,
+                          struct Sockaddr* src,
+                          struct Allocator* alloc,
                           struct Admin* admin)
 {
-    Log_debug(admin->logger, "Handling message.");
-
-    // Try to handle multiple stacked requests in the same frame.
-    for (;;) {
-        struct Allocator* allocator = Allocator_child(admin->allocator);
-        int ret = handleFrame(message, channelId, allocator, admin);
-        Allocator_free(allocator);
-        if (ret == handleFrame_PARTIAL || ret == handleFrame_INVALID) {
-            return;
-        }
-    }
-}
-
-static uint8_t receiveMessage(struct Message* message, struct Interface* iface)
-{
-    struct Admin* admin = iface->receiverContext;
-
-    Assert_true(message->length >= 4);
-
-    uint32_t channelNum;
-    Message_pop(message, &channelNum, 4);
-
     message->bytes[message->length] = '\0';
-    Log_debug(admin->logger, "Got data from [%u] [%s]", channelNum, message->bytes);
+    Log_debug(admin->logger, "Got message from [%s] [%s]",
+              Sockaddr_print(src, alloc), message->bytes);
 
     // handle non empty message data
     if (message->length > Admin_MAX_REQUEST_SIZE) {
@@ -373,10 +312,41 @@ static uint8_t receiveMessage(struct Message* message, struct Interface* iface)
         #define TOO_BIG_STRLEN (sizeof(TOO_BIG) - 1)
         Bits_memcpyConst(message->bytes, TOO_BIG, TOO_BIG_STRLEN);
         message->length = TOO_BIG_STRLEN;
-        sendMessage(message, channelNum, admin);
-    } else {
-        handleMessage(message, channelNum, admin);
+        sendMessage(message, src, admin);
+        return;
     }
+
+    struct Reader* reader = ArrayReader_new(message->bytes, message->length, alloc);
+    Dict messageDict;
+    if (StandardBencSerializer_get()->parseDictionary(reader, alloc, &messageDict)) {
+        Log_warn(admin->logger,
+                 "Unparsable data from [%s] content: [%s]",
+                 Sockaddr_print(src, alloc), message->bytes);
+        return;
+    }
+
+    int amount = reader->bytesRead(reader);
+    if (amount < message->length) {
+        Log_warn(admin->logger,
+                 "Message from [%s] contained garbage after byte [%d] content: [%s]",
+                 Sockaddr_print(src, alloc), amount - 1, message->bytes);
+        return;
+    }
+
+    handleRequest(&messageDict, message, src, alloc, admin);
+}
+
+static uint8_t receiveMessage(struct Message* message, struct Interface* iface)
+{
+    struct Admin* admin = Identity_cast((struct Admin*) iface->receiverContext);
+
+    Assert_true(message->length >= (int)admin->addrLen);
+    struct Sockaddr_storage addrStore;
+    Message_pop(message, &addrStore, admin->addrLen);
+
+    struct Allocator* alloc = Allocator_child(admin->allocator);
+    handleMessage(message, &addrStore.addr, alloc, admin);
+    Allocator_free(alloc);
     return 0;
 }
 
@@ -391,15 +361,13 @@ void Admin_registerFunctionWithArgCount(char* name,
     if (!admin) {
         return;
     }
+    Identity_check(admin);
+
     String* str = String_new(name, admin->allocator);
-    if (!admin->functionCount) {
-        admin->functions = admin->allocator->malloc(sizeof(struct Function), admin->allocator);
-    } else {
-        admin->functions =
-            admin->allocator->realloc(admin->functions,
-                                      sizeof(struct Function) * (admin->functionCount + 1),
-                                      admin->allocator);
-    }
+    admin->functions =
+        Allocator_realloc(admin->allocator,
+                          admin->functions,
+                          sizeof(struct Function) * (admin->functionCount + 1));
     struct Function* fu = &admin->functions[admin->functionCount];
     admin->functionCount++;
 
@@ -430,23 +398,25 @@ void Admin_registerFunctionWithArgCount(char* name,
     }
 }
 
-struct Admin* Admin_new(struct Interface* toAngelInterface,
+struct Admin* Admin_new(struct AddrInterface* iface,
                         struct Allocator* alloc,
                         struct Log* logger,
                         struct EventBase* eventBase,
                         String* password)
 {
-    struct Admin* admin = alloc->clone(sizeof(struct Admin), alloc, &(struct Admin) {
-        .toAngelInterface = toAngelInterface,
+    struct Admin* admin = Allocator_clone(alloc, (&(struct Admin) {
+        .iface = iface,
         .allocator = alloc,
         .logger = logger,
-        .functionCount = 0,
         .eventBase = eventBase,
-        .password = String_clone(password, alloc)
-    });
+        .addrLen = iface->addr->addrLen
+    }));
+    Identity_set(admin);
 
-    toAngelInterface->receiveMessage = receiveMessage;
-    toAngelInterface->receiverContext = admin;
+    admin->password = String_clone(password, alloc),
+
+    iface->generic.receiveMessage = receiveMessage;
+    iface->generic.receiverContext = admin;
 
     return admin;
 }

@@ -18,10 +18,9 @@
 #include "benc/Dict.h"
 #include "benc/Int.h"
 #include "memory/Allocator.h"
+#include "util/events/Event.h"
 #include "util/platform/libc/strlen.h"
 #include "util/log/Log.h"
-
-#include <event2/event.h>
 
 struct Context
 {
@@ -304,16 +303,15 @@ static void security(List* securityConf, struct Allocator* tempAlloc, struct Con
 }
 
 void Configurator_config(Dict* config,
-                         uint8_t* sockAddr,
-                         int addrLen,
+                         struct Sockaddr* sockAddr,
                          String* adminPassword,
-                         struct event_base* eventBase,
+                         struct EventBase* eventBase,
                          struct Log* logger,
                          struct Allocator* alloc)
 {
     struct Allocator* tempAlloc = Allocator_child(alloc);
     struct AdminClient* client =
-        AdminClient_new(sockAddr, addrLen, adminPassword, eventBase, logger, tempAlloc);
+        AdminClient_new(sockAddr, adminPassword, eventBase, logger, tempAlloc);
 
     struct Context ctx = { .logger = logger, .alloc = tempAlloc, .client = client };
 
@@ -335,5 +333,5 @@ void Configurator_config(Dict* config,
     List* securityList = Dict_getList(config, String_CONST("security"));
     security(securityList, tempAlloc, &ctx);
 
-    tempAlloc->free(tempAlloc);
+    Allocator_free(tempAlloc);
 }

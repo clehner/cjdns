@@ -42,6 +42,7 @@ target_link_libraries(cjdns-angel
 add_library(cjdns-core
     Core.c
     Core_admin.c
+    Hermes.c
 )
 
 target_link_libraries(cjdns-core
@@ -63,6 +64,7 @@ target_link_libraries(cjdns-core
     cjdns-tunnel-iptunnel
     cjdns-crypto-random
     cjdns-memory-canary
+    cjdns-interface-addressable
 )
 
 add_executable(cjdns

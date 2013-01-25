@@ -19,6 +19,7 @@
 #include "admin/angel/Core.h"
 #include "admin/angel/Core_admin.h"
 #include "admin/angel/InterfaceWaiter.h"
+#include "admin/angel/Hermes.h"
 #include "admin/AuthorizedPasswords.h"
 #include "benc/Int.h"
 #include "benc/serialization/BencSerializer.h"
@@ -28,6 +29,8 @@
 #include "dht/ReplyModule.h"
 #include "dht/SerializationModule.h"
 #include "dht/dhtcore/RouterModule_admin.h"
+#include "interface/addressable/AddrInterface.h"
+#include "interface/addressable/UDPAddrInterface.h"
 #include "interface/UDPInterface_admin.h"
 #ifdef HAS_ETH_INTERFACE
 #include "interface/ETHInterface_admin.h"
@@ -173,6 +176,12 @@ void Core_initTunnel(String* desiredDeviceName,
     TUNConfigurator_setMTU(assignedTunName, DEFAULT_MTU, logger, eh);
 }
 
+/** This is a response from a call which is intended only to send information to the angel. */
+static void angelResponse(Dict* resp, void* vNULL)
+{
+    // do nothing
+}
+
 /*
  * This process is started with 2 parameters, they must all be numeric in base 10.
  * toAngel the pipe which is used to send data back to the angel process.
@@ -193,14 +202,15 @@ int Core_main(int argc, char** argv)
         Except_raise(eh, -1, "This is internal to cjdns and shouldn't started manually.");
     }
 
-    struct Allocator* alloc = MallocAllocator_new(ALLOCATOR_FAILSAFE);
-    struct Random* rand = Random_new(alloc, eh);
-    alloc = CanaryAllocator_new(alloc, rand);
+    struct Allocator* unsafeAlloc = MallocAllocator_new(ALLOCATOR_FAILSAFE);
+    struct Random* rand = Random_new(unsafeAlloc, eh);
+    struct Allocator* alloc = CanaryAllocator_new(unsafeAlloc, rand);
+    struct Allocator* tempAlloc = Allocator_child(alloc);
     struct EventBase* eventBase = EventBase_new(alloc);
 
     // -------------------- Setup the Pre-Logger ---------------------- //
-    struct Writer* logWriter = FileWriter_new(stdout, alloc);
-    struct Log* preLogger = WriterLog_new(logWriter, alloc);
+    struct Writer* logWriter = FileWriter_new(stderr, tempAlloc);
+    struct Log* preLogger = WriterLog_new(logWriter, tempAlloc);
     struct IndirectLog* indirectLogger = IndirectLog_new(alloc);
     indirectLogger->wrappedLog = preLogger;
     struct Log* logger = &indirectLogger->pub;
@@ -208,13 +218,23 @@ int Core_main(int argc, char** argv)
     // The first read inside of getInitialConfig() will begin it waiting.
     struct PipeInterface* pi =
         PipeInterface_new(fromAngel, toAngel, eventBase, logger, alloc, rand);
+    struct Hermes* hermes = Hermes_new(&pi->generic, eventBase, logger, alloc);
 
-    Dict* config = getInitialConfig(&pi->generic, eventBase, alloc, eh);
+    Dict* config = getInitialConfig(&pi->generic, eventBase, tempAlloc, eh);
     String* privateKeyHex = Dict_getString(config, String_CONST("privateKey"));
     Dict* adminConf = Dict_getDict(config, String_CONST("admin"));
     String* pass = Dict_getString(adminConf, String_CONST("pass"));
-    String* bind = Dict_getString(config, String_CONST("bind"));
+    String* bind = Dict_getString(adminConf, String_CONST("bind"));
     if (!(pass && privateKeyHex && bind)) {
+        if (!pass) {
+            Except_raise(eh, -1, "Expected 'pass'");
+        }
+        if (!bind) {
+            Except_raise(eh, -1, "Expected 'bind'");
+        }
+        if (!privateKeyHex) {
+            Except_raise(eh, -1, "Expected 'privateKey'");
+        }
         Except_raise(eh, -1, "Expected 'pass', 'privateKey' and 'bind' in configuration.");
     }
     Log_keys(logger, "Starting core with admin password [%s]", pass->bytes);
@@ -225,12 +245,26 @@ int Core_main(int argc, char** argv)
         Except_raise(eh, -1, "privateKey must be 64 bytes of hex.");
     }
 
-    int udpSock = bindUDP(bind);
+    struct Sockaddr_storage bindAddr;
+    if (Sockaddr_parse(bind->bytes, &bindAddr)) {
+        Except_raise(eh, -1, "bind address [%s] unparsable", bind->bytes);
+    }
 
-    struct Admin* admin = Admin_new(&pi->generic, alloc, logger, eventBase, pass);
+    struct AddrInterface* udpAdmin =
+        UDPAddrInterface_new(eventBase, &bindAddr.addr, alloc, eh, logger);
 
-    Dict adminResponse = Dict_CONST(String_CONST("error"), String_OBJ(String_CONST("none")), NULL);
-    Admin_sendMessageToAngel(&adminResponse, admin);
+    struct Admin* admin = Admin_new(udpAdmin, alloc, logger, eventBase, pass);
+
+    char* boundAddr = Sockaddr_print(udpAdmin->addr, tempAlloc);
+    Dict adminResponse = Dict_CONST(
+        String_CONST("bind"), String_OBJ(String_CONST(boundAddr)), NULL
+    );
+    Dict response = Dict_CONST(
+        String_CONST("error"), String_OBJ(String_CONST("none")), Dict_CONST(
+        String_CONST("admin"), Dict_OBJ(&adminResponse), NULL
+    ));
+    // This always times out because the angel doesn't respond.
+    Hermes_callAngel(&response, angelResponse, NULL, alloc, eh, hermes);
 
     // --------------------- Setup the Logger --------------------- //
     // the prelogger will nolonger be used.
@@ -303,7 +337,7 @@ int Core_main(int argc, char** argv)
     struct MemoryContext* mc =
         alloc->clone(sizeof(struct MemoryContext), alloc,
             &(struct MemoryContext) {
-                .allocator = alloc,
+                .allocator = unsafeAlloc,
                 .admin = admin
             });
     Admin_registerFunction("memory", adminMemory, mc, false, NULL, admin);

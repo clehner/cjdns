@@ -16,6 +16,7 @@
 #include "util/events/EventBase.h"
 #include "util/events/Event.h"
 #include "util/Errno.h"
+#include "util/Identity.h"
 
 #include <stdint.h>
 #include <event2/event.h>
@@ -29,7 +30,7 @@ struct Event_pvt
     Identity
 };
 
-static void handleEvent(Socket s, short eventType, void* vevent)
+static void handleEvent(int s, short eventType, void* vevent)
 {
     struct Event_pvt* event = Identity_cast((struct Event_pvt*) vevent);
     event->callback(event->callbackContext);
@@ -42,7 +43,7 @@ static void freeEvent(void* vevent)
 
 struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
                                void* const callbackContext,
-                               Socket s,
+                               int s,
                                struct EventBase* base,
                                struct Allocator* alloc,
                                struct Except* eh)
@@ -56,14 +57,14 @@ struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
     out->libeventEvent = event_new(base, s, EV_READ | EV_PERSIST, handleEvent, out);
 
     if (!out->libeventEvent) {
-        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to create event. errno [%s]",
+        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to create event [%s]",
                      Errno_getString());
     }
 
     Allocator_onFree(alloc, freeEvent, out);
 
     if (event_add(out->libeventEvent, NULL)) {
-        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to register event. errno [%s]",
+        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to register event [%s]",
                      Errno_getString());
     }
 

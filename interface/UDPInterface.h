@@ -19,14 +19,12 @@
 #include "interface/InterfaceController.h"
 #include "memory/Allocator.h"
 #include "util/events/EventBase.h"
+#include "util/platform/Sockaddr.h"
 #include "util/log/Log.h"
 
 struct UDPInterface
 {
-    struct Interface generic;
-
-    /** Used for testing. */
-    uint16_t boundPort;
+    struct Sockaddr* addr;
 };
 
 /**
@@ -53,7 +51,7 @@ struct UDPInterface
 #define UDPInterface_new_PROTOCOL_NOT_SUPPORTED -4
 #define UDPInterface_new_BIND_FAILED -5
 struct UDPInterface* UDPInterface_new(struct EventBase* base,
-                                      const char* bindAddr,
+                                      struct Sockaddr* bindAddr,
                                       struct Allocator* allocator,
                                       struct Except* exHandler,
                                       struct Log* logger,

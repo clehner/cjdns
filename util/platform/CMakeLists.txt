@@ -11,6 +11,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 add_library(cjdns-util-platform-socket
     Socket.c
+    Sockaddr.c
 )
 target_link_libraries(cjdns-util-platform-socket
     ${LIBEVENT2_LIBRARIES}

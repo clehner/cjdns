@@ -35,3 +35,8 @@ void EventBase_beginLoop(struct EventBase* eventBase)
 {
     event_base_dispatch(eventBase);
 }
+
+void EventBase_endLoop(struct EventBase* eventBase)
+{
+    event_base_loopbreak(eventBase);
+}

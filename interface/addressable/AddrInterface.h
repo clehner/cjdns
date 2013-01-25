@@ -12,27 +12,28 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef Event_H
-#define Event_H
+#ifndef AddrInterface_H
+#define AddrInterface_H
 
-#include "exception/Except.h"
-#include "memory/Allocator.h"
-#include "util/events/EventBase.h"
-#include "util/platform/Socket.h"
+#include "interface/Interface.h"
+#include "util/platform/Sockaddr.h"
 
-struct Event
+/**
+ * An AddrInterface, short for "Adderssable Interface" is an interface which
+ * sends and accepts an address as the header of the messages sent to and
+ * recieved from it.
+ */
+struct AddrInterface
 {
-    int unused;
+    /** As a generic interface. */
+    struct Interface generic;
+
+    /**
+     * The address of this node if applicable to the implementation.
+     * addr->addrLen will always tell how many of the first bytes of each
+     * message are reserved for the address.
+     */
+    struct Sockaddr* addr;
 };
-
-#define Event_socketRead_INTERNAL -1
-struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
-                               void* const callbackContext,
-                               int s,
-                               struct EventBase* base,
-                               struct Allocator* alloc,
-                               struct Except* eh);
-
-void Event_clearEvent(struct Event* event);
 
 #endif

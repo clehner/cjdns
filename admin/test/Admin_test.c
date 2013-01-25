@@ -13,7 +13,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "admin/testframework/AdminTestFramework.h"
-
 #include "benc/Dict.h"
 #include "benc/String.h"
 #include "benc/Int.h"
@@ -21,8 +20,6 @@
 #include "util/Assert.h"
 #include "util/Errno.h"
 #include "util/platform/libc/strlen.h"
-
-#include <event2/event.h>
 
 struct Context {
     struct AdminTestFramework* framework;
@@ -53,6 +50,7 @@ static void standardClient(struct Context* ctx)
                             ctx->framework->client,
                             ctx->framework->alloc);
 
+    printf("%d\n", res->err);
     Assert_always(!res->err);
     Assert_always(Dict_getInt(res->responseDict, String_CONST("called!")));
     Assert_always(ctx->called);
