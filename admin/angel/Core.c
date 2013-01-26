@@ -272,7 +272,6 @@ int Core_main(int argc, char** argv)
     indirectLogger->wrappedLog = adminLogger;
     logger = adminLogger;
 
-
     // CryptoAuth
     struct Address addr;
     parsePrivateKey(privateKey, &addr, eh);

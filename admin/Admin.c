@@ -89,12 +89,12 @@ struct Admin
     Identity
 };
 
-static void sendMessage(struct Message* message, struct Sockaddr* dest, struct Admin* admin)
+static uint8_t sendMessage(struct Message* message, struct Sockaddr* dest, struct Admin* admin)
 {
     // stack overflow when used with admin logger.
     //Log_keys(admin->logger, "sending message to angel [%s]", message->bytes);
     Message_push(message, dest, dest->addrLen);
-    admin->iface->generic.sendMessage(message, &admin->iface->generic);
+    return admin->iface->generic.sendMessage(message, &admin->iface->generic);
 }
 
 static int sendBenc(Dict* message, struct Sockaddr* dest, struct Admin* admin)
@@ -115,8 +115,7 @@ static int sendBenc(Dict* message, struct Sockaddr* dest, struct Admin* admin)
         .length = w->bytesWritten(w),
         .padding = SEND_MESSAGE_PADDING
     };
-    sendMessage(&m, dest, admin);
-    return 0;
+    return sendMessage(&m, dest, admin);
 }
 
 /**
