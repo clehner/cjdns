@@ -52,7 +52,7 @@ def callfunc(cjdns, funcName, password, args):
         raise;
 
 def cjdns_connect(ipAddr, port, password):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM);
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
     sock.connect((ipAddr, port));
 
     # Make sure it pongs.
