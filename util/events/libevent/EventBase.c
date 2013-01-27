@@ -20,12 +20,12 @@
 
 static void freeEventBase(void* vLibEventEvBase)
 {
-    event_base_free((struct event_base*) vLibEventEvBase);
+    event_base_free((struct EventBase*) vLibEventEvBase);
 }
 
 struct EventBase* EventBase_new(struct Allocator* alloc)
 {
-    struct event_base* libEventBase = event_base_new();
+    struct EventBase* libEventBase = event_base_new();
     Assert_true(libEventBase);
     alloc->onFree(freeEventBase, libEventBase, alloc);
     return (struct EventBase*) libEventBase;

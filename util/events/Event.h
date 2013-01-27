@@ -33,6 +33,4 @@ struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
                                struct Allocator* alloc,
                                struct Except* eh);
 
-void Event_clearEvent(struct Event* event);
-
 #endif

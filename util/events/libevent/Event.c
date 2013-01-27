@@ -19,36 +19,27 @@
 #include "util/Identity.h"
 
 #include <stdint.h>
-#include <uv.h>
-
-struct watcher {
-    uv_poll_t handler;
-    void *data;  // Useful if we need to preserve state data between callbacks.
-};
+#include <event2/event.h>
 
 struct Event_pvt
 {
     struct Event pub;
     void (* const callback)(void* callbackContext);
     void* const callbackContext;
-    struct watcher watcher;
-    uv_loop_t *loop;
+    struct event* libeventEvent;
     Identity
 };
 
-static void handleEvent(uv_poll_t *handle, int status, int events)
+static void handleEvent(int s, short eventType, void* vevent)
 {
-    struct watcher* watcher = (struct watcher *)handle;
-    struct Event_pvt* event = Identity_cast((struct Event_pvt *)watcher->data);
-
-    if ((status == 0) && (events == UV_READABLE)) {
-        event->callback(event->callbackContext);
-    }
+    struct Event_pvt* event = Identity_cast((struct Event_pvt*) vevent);
+    event->callback(event->callbackContext);
 }
 
 static void freeEvent(void* vevent)
 {
-    Event_clearEvent((struct Event*) vevent);
+    struct Event_pvt* ctx = Identity_cast((struct Event_pvt*) vevent);
+    event_free(ctx->libeventEvent);
 }
 
 struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
@@ -61,22 +52,21 @@ struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
     struct Event_pvt* out = Allocator_clone(alloc, (&(struct Event_pvt) {
         .callback = callback,
         .callbackContext = callbackContext,
-        .loop = uv_default_loop()
     }));
     Identity_set(out);
 
-    if (uv_poll_init(out->loop, &out->watcher.handler, s) != 0) {
-        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to create event. errno [%s]",
-                     uv_strerror(uv_last_error(out->loop)));
-    }
+    out->libeventEvent = event_new(base, s, EV_READ | EV_PERSIST, handleEvent, out);
 
-    out->watcher.data = out;
+    if (!out->libeventEvent) {
+        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to create event [%s]",
+                     Errno_getString());
+    }
 
     Allocator_onFree(alloc, freeEvent, out);
 
-    if (uv_poll_start(&out->watcher.handler, UV_READABLE, handleEvent) == -1) {
-        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to register event. errno [%s]",
-                     uv_strerror(uv_last_error(out->loop)));
+    if (event_add(out->libeventEvent, NULL)) {
+        Except_raise(eh, Event_socketRead_INTERNAL, "Failed to register event [%s]",
+                     Errno_getString());
     }
 
     return &out->pub;
@@ -85,5 +75,5 @@ struct Event* Event_socketRead(void (* const callback)(void* callbackContext),
 void Event_clearEvent(struct Event* event)
 {
     struct Event_pvt* ctx = Identity_cast((struct Event_pvt*) event);
-    uv_poll_stop(&ctx->watcher.handler);
+    event_free(ctx->libeventEvent);
 }

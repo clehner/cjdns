@@ -27,7 +27,7 @@ target_link_libraries(cjdns-angel
     cjdbenc
     cjdbenc_StandardBencSerializer
     cjdmemory
-    cjdns-util-events-libevent
+    cjdns-util-events-libuv
     cjdns-security
     cjdns-process
     cjdns-interface-waiter
@@ -56,7 +56,7 @@ target_link_libraries(cjdns-core
     cjdmemory
     cjdns-admin
     cjdnet
-    cjdns-util-events-libevent
+    cjdns-util-events-libuv
     cjdns-interface-waiter
     cjdns-util-log-writer
     cjdns-admin-logger
@@ -81,7 +81,7 @@ target_link_libraries(cjdroute2
     cjdns-admin-client
     crypto
     cjdns-crypto-bench
-    cjdns-util-events-libevent
+    cjdns-util-events-libuv
     cjdbenc_StandardBencSerializer
     cjdbenc_JsonBencSerializer
     cjdns-process

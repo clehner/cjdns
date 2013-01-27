@@ -49,7 +49,7 @@ struct UDPInterfaceBase
 #define UDPInterfaceBase_new_SOCKET_FAILED -3
 #define UDPInterfaceBase_new_PROTOCOL_NOT_SUPPORTED -4
 #define UDPInterfaceBase_new_BIND_FAILED -5
-struct UDPInterfaceBase* UDPInterfaceBase_new(struct event_base* base,
+struct UDPInterfaceBase* UDPInterfaceBase_new(struct EventBase* base,
                                               const char* bindAddr,
                                               struct Allocator* allocator,
                                               struct Except* exHandler,

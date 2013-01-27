@@ -38,8 +38,8 @@
 #include "util/Bits.h"
 #include "util/Endian.h"
 #include "util/Pinger.h"
-#include "util/Time.h"
-#include "util/Timeout.h"
+#include "util/events/Time.h"
+#include "util/events/Timeout.h"
 #include "util/version/Version.h"
 #include "util/platform/libc/string.h"
 

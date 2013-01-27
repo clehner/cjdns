@@ -24,8 +24,8 @@
 #include "util/Bits.h"
 #include "util/Errno.h"
 #include "util/log/Log.h"
-#include "util/Time.h"
-#include "util/Timeout.h"
+#include "util/events/Time.h"
+#include "util/events/Timeout.h"
 #include "wire/Message.h"
 #include "wire/Error.h"
 

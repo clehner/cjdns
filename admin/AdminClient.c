@@ -27,7 +27,7 @@
 #include "util/Endian.h"
 #include "util/Errno.h"
 #include "util/Hex.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 #include "util/Identity.h"
 #include "wire/Message.h"
 

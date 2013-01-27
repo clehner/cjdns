@@ -14,7 +14,7 @@
  */
 #include "util/AverageRoller.h"
 #include "util/Bits.h"
-#include "util/Time.h"
+#include "util/events/Time.h"
 
 #include <event2/event.h>
 #include "util/platform/libc/string.h"
@@ -54,7 +54,7 @@ struct AverageRoller
     uint32_t average;
 
     /** Means of getting the current time. */
-    struct event_base* eventBase;
+    struct EventBase* eventBase;
 
     /**
      * An array of entries containing sum and entry count for each second
@@ -66,7 +66,7 @@ struct AverageRoller
 
 /** @see AverageRoller.h */
 struct AverageRoller* AverageRoller_new(const uint32_t windowSeconds,
-                                        struct event_base* eventBase,
+                                        struct EventBase* eventBase,
                                         const struct Allocator* allocator)
 {
     struct AverageRoller* roller = allocator->calloc(

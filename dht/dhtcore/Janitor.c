@@ -28,8 +28,8 @@
 #include "util/Bits.h"
 #include "util/events/EventBase.h"
 #include "util/Hex.h"
-#include "util/Timeout.h"
-#include "util/Time.h"
+#include "util/events/Timeout.h"
+#include "util/events/Time.h"
 
 #include "util/platform/libc/string.h"
 #include <stdint.h>

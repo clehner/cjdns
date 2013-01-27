@@ -17,7 +17,7 @@ add_library(cjdns-interface-addressable
 target_link_libraries(cjdns-interface-addressable
 #    util
 #    cjdns-crypto-key
-    cjdns-util-events-libevent
+    cjdns-util-events-libuv
     cjdns-util-platform-socket
 )
 

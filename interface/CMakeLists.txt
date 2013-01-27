@@ -39,7 +39,6 @@ add_library(interface
 target_link_libraries(interface
     util
     cjdns-crypto-key
-    cjdns-util-events-libevent
     cjdns-util-platform-socket
 )
 

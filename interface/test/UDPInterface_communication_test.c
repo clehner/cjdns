@@ -31,7 +31,7 @@
 #include "util/log/Log.h"
 #include "util/log/WriterLog.h"
 #include "util/platform/libc/string.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 
 /*
  * Setup 2 UDPInterface's, test sending traffic between them.

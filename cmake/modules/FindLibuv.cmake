@@ -10,12 +10,34 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-include(CheckLibraryExists)
-include(CheckFunctionExists)
-
-find_package(Socket REQUIRED)
-
 if (NOT LIBUV_FOUND)
+
+    include(CheckLibraryExists)
+    include(CheckFunctionExists)
+    include(FindThreads)
+    include(FindClockGettime)
+
+    find_package(Socket REQUIRED)
+    find_package(ClockGettime)
+    find_package(Threads)
+
+    function(addDependencies)
+        if (APPLE)
+            find_library(CORE_SERVICES_LIB CoreServices)
+            set_property(TARGET uv PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES
+                ${SOCKET_LIBRARIES}
+                ${CLOCK_GETTIME_LIBRARIES}
+                ${CMAKE_THREAD_LIBS_INIT}
+                ${CORE_SERVICES_LIB}
+            )
+        else ()
+            set_property(TARGET uv PROPERTY IMPORTED_LINK_INTERFACE_LIBRARIES
+                ${SOCKET_LIBRARIES}
+                ${CLOCK_GETTIME_LIBRARIES}
+                ${CMAKE_THREAD_LIBS_INIT}
+            )
+        endif ()
+    endFunction()
 
     find_path(LIBUV_INCLUDE_DIRS
         NAMES
@@ -59,9 +81,9 @@ endif()
 
 if (NOT LIBUV_FOUND AND "$ENV{NO_STATIC}" STREQUAL "")
     include(ExternalProject)
-    include(FindThreads)
 
-    find_package(Threads)
+    # Without this, the build doesn't happen until link time.
+    include_directories(${UV_USE_FILES})
 
     set(url "${CMAKE_SOURCE_DIR}/cmake/externals/node-v0.9.7.tar.gz")
     if (NOT EXISTS "${url}")
@@ -92,13 +114,9 @@ if (NOT LIBUV_FOUND AND "$ENV{NO_STATIC}" STREQUAL "")
     set_property(TARGET uv
         PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/libuv/libuv.a)
 
-    if (APPLE)
-        find_library(CORE_SERVICES_LIB CoreServices)
-        set(LIBUV_LIBRARIES uv ${CORE_SERVICES_LIB} ${CMAKE_THREAD_LIBS_INIT})
-    else ()
-            set(LIBUV_LIBRARIES uv ${CMAKE_THREAD_LIBS_INIT})
-    endif ()
+    addDependencies()
 
+    set(LIBUV_LIBRARIES uv)
     set(LIBUV_FOUND TRUE)
 
 endif()

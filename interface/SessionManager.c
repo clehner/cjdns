@@ -17,8 +17,8 @@
 #include "interface/Interface.h"
 #include "memory/Allocator.h"
 #include "util/Bits.h"
-#include "util/Time.h"
-#include "util/Timeout.h"
+#include "util/events/Time.h"
+#include "util/events/Timeout.h"
 #include "wire/Error.h"
 #include "wire/Headers.h"
 #include "wire/Message.h"
@@ -55,7 +55,7 @@ struct SessionManager
 
     void* const interfaceContext;
 
-    struct event_base* const eventBase;
+    struct EventBase* const eventBase;
 
     struct Map_OfSessionsByIp6 ifaceMap;
 
@@ -141,7 +141,7 @@ struct SessionManager_Session* SessionManager_sessionForHandle(uint32_t handle,
 struct SessionManager* SessionManager_new(Interface_CALLBACK(decryptedIncoming),
                                           Interface_CALLBACK(encryptedOutgoing),
                                           void* interfaceContext,
-                                          struct event_base* eventBase,
+                                          struct EventBase* eventBase,
                                           struct CryptoAuth* cryptoAuth,
                                           struct Allocator* allocator)
 {

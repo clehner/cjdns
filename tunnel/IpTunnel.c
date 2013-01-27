@@ -31,7 +31,7 @@
 #include "util/AddrTools.h"
 #include "util/events/EventBase.h"
 #include "util/Identity.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 #include "wire/Error.h"
 #include "wire/Headers.h"
 #include "wire/Ethernet.h"

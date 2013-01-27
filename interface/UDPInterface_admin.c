@@ -139,7 +139,7 @@ static void newInterface(Dict* args, void* vcontext, String* txid)
     newInterface2(ctx, &addr.addr, txid);
 }
 
-void UDPInterface_admin_register(struct event_base* base,
+void UDPInterface_admin_register(struct EventBase* base,
                                  struct Allocator* allocator,
                                  struct Log* logger,
                                  struct Admin* admin,

@@ -58,7 +58,7 @@ void PipeInterface_waitUntilReady(struct PipeInterface* pif);
 
 struct PipeInterface* PipeInterface_new(int inPipe,
                                         int outPipe,
-                                        struct event_base* eventBase,
+                                        struct EventBase* eventBase,
                                         struct Log* logger,
                                         struct Allocator* alloc,
                                         struct Random* rand);

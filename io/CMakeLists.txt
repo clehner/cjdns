@@ -9,9 +9,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-project(cjdio C)
-cmake_minimum_required(VERSION 2.4)
-
 add_library(cjdio ArrayReader.c ArrayWriter.c FileReader.c FileWriter.c)
 target_link_libraries(cjdio cjdmemory ${LIBEVENT2_LIBRARIES})
 

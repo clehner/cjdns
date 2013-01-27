@@ -10,34 +10,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-add_library(TestFramework TestFramework.c)
-target_link_libraries(TestFramework
-    crypto
-    interface
-    switch
-    dht
-    dhtcore
-    cjdbenc
-    cjdbenc_JsonBencSerializer
-    cjdbenc_StandardBencSerializer
+include_directories(${LIBUV_INCLUDE_DIRS})
+
+#if(COMMAND cmake_policy)
+#    cmake_policy(SET CMP0003 NEW)
+#endif(COMMAND cmake_policy)
+
+add_library(cjdns-util-events-libuv
+    EventBase.c
+    Event.c
+    Time.c
+    Timeout.c
+)
+target_link_libraries(cjdns-util-events-libuv
     cjdmemory
-    cjdns-admin
-    cjdnet
-    cjdns-util-events-libuv
-    cjdns-tunnel-iptunnel
-    cjdns-crypto-random
-    cjdns-memory-canary
+    ${LIBUV_LIBRARIES}
 )
 
-
-set(Test_FILES
-    cjdroute_injection_test.c
-    cjdroute_routerPing_test.c
-    CryptoAddress_test.c
-    twoNodes_test.c
-    threeNodes_test.c
-)
-set(Test_LIBRARIES
-    TestFramework
-)
-include(${CMAKE_SOURCE_DIR}/cmake/modules/Test.cmake)
+set_target_properties(cjdns-util-events-libuv
+        PROPERTIES COMPILE_FLAGS "-D _GNU_SOURCE")

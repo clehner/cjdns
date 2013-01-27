@@ -101,7 +101,7 @@ void* CryptoAuth_getUser(struct Interface* iface);
  */
 struct CryptoAuth* CryptoAuth_new(struct Allocator* allocator,
                                   const uint8_t* privateKey,
-                                  struct event_base* eventBase,
+                                  struct EventBase* eventBase,
                                   struct Log* logger,
                                   struct Random* rand);
 

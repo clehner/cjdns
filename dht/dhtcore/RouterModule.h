@@ -57,7 +57,7 @@ struct RouterModule_Search;
 struct RouterModule* RouterModule_register(struct DHTModuleRegistry* registry,
                                            struct Allocator* allocator,
                                            const uint8_t myAddress[Address_KEY_SIZE],
-                                           struct event_base* eventBase,
+                                           struct EventBase* eventBase,
                                            struct Log* logger,
                                            struct Admin* admin,
                                            struct Random* rand);

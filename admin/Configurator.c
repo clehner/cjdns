@@ -47,11 +47,11 @@ static void die(struct AdminClient_Result* res, struct Context* ctx, struct Allo
     exit(1);
 }
 
-static void rpcCall0(String* function,
-                     Dict* args,
-                     struct Context* ctx,
-                     struct Allocator* alloc,
-                     bool exitIfError)
+static int rpcCall0(String* function,
+                    Dict* args,
+                    struct Context* ctx,
+                    struct Allocator* alloc,
+                    bool exitIfError)
 {
     struct AdminClient_Result* res = AdminClient_rpcCall(function, args, ctx->client, alloc);
     if (res->err) {
@@ -72,7 +72,9 @@ static void rpcCall0(String* function,
         }
         Log_warn(ctx->logger, "Got error [%s] calling [%s], ignoring.",
                  error->bytes, function->bytes);
+        return 1;
     }
+    return 0;
 }
 
 static void rpcCall(String* function, Dict* args, struct Context* ctx, struct Allocator* alloc)
@@ -240,7 +242,9 @@ static void ethInterface(Dict* config, struct Context* ctx)
         if (deviceStr) {
             Dict_putString(d, String_CONST("bindDevice"), deviceStr, ctx->alloc);
         }
-        rpcCall(String_CONST("ETHInterface_new"), d, ctx, ctx->alloc);
+        if (rpcCall0(String_CONST("ETHInterface_new"), d, ctx, ctx->alloc, false)) {
+            continue;
+        }
 
         // Make the connections.
         Dict* connectTo = Dict_getDict(eth, String_CONST("connectTo"));

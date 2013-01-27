@@ -25,7 +25,7 @@
 #include "util/events/Event.h"
 #include "util/events/EventBase.h"
 #include "util/log/Log.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 #include "util/Identity.h"
 #include "util/Hex.h"
 

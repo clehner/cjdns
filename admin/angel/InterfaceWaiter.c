@@ -20,7 +20,7 @@
 #include "util/events/EventBase.h"
 #include "util/log/Log.h"
 #include "io/FileWriter.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 
 
 struct Context
@@ -51,7 +51,7 @@ static uint8_t receiveMessage(struct Message* message, struct Interface* iface)
 }
 
 struct Message* InterfaceWaiter_waitForData(struct Interface* iface,
-                                            struct event_base* eventBase,
+                                            struct EventBase* eventBase,
                                             struct Allocator* alloc,
                                             struct Except* eh)
 {

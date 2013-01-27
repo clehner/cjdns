@@ -44,7 +44,7 @@ static int reconnectionNewEndpointTest(struct InterfaceController* ifController,
                                        uint8_t* pk,
                                        struct Message** fromSwitchPtr,
                                        struct Allocator* alloc,
-                                       struct event_base* eventBase,
+                                       struct EventBase* eventBase,
                                        struct Log* logger,
                                        struct Interface* routerIf,
                                        struct Random* rand)

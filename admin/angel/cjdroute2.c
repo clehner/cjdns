@@ -352,7 +352,7 @@ static int usage(char* appName)
 static int benchmark()
 {
     struct Allocator* alloc = MallocAllocator_new(1<<22);
-    struct event_base* base = EventBase_new(alloc);
+    struct EventBase* base = EventBase_new(alloc);
     struct Writer* logWriter = FileWriter_new(stdout, alloc);
     struct Log* logger = WriterLog_new(logWriter, alloc);
     CryptoAuth_benchmark(base, logger, alloc);

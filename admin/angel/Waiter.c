@@ -17,19 +17,21 @@
 #include "exception/Except.h"
 #include "io/FileWriter.h"
 #include "memory/BufferAllocator.h"
-#include "util/Timeout.h"
+#include "util/events/Timeout.h"
 #include "util/events/Event.h"
 #include "util/events/EventBase.h"
+#include "util/platform/libc/string.h"
 #include "util/Errno.h"
+#include "util/Identity.h"
 #include "util/log/Log.h"
 
 #include <unistd.h>
-#include "util/platform/libc/string.h"
 
 struct Context
 {
     struct EventBase* eventBase;
     int failed;
+    Identity
 };
 
 /**
@@ -37,7 +39,7 @@ struct Context
  */
 static void responseFromCore(void* vcontext)
 {
-    struct Context* ctx = (struct Context*) vcontext;
+    struct Context* ctx = Identity_cast((struct Context*) vcontext);
     ctx->failed = 0;
     EventBase_endLoop(ctx->eventBase);
 }
@@ -47,7 +49,7 @@ static void responseFromCore(void* vcontext)
  */
 static void timeoutAwaitingResponse(void* vcontext)
 {
-    struct Context* ctx = (struct Context*) vcontext;
+    struct Context* ctx = Identity_cast((struct Context*) vcontext);
     ctx->failed = 1;
     EventBase_endLoop(ctx->eventBase);
 }
@@ -64,6 +66,7 @@ uint32_t Waiter_getData(uint8_t* output,
     struct Context ctx = {
         .eventBase = eventBase
     };
+    Identity_set(&ctx);
 
     Timeout_setTimeout(timeoutAwaitingResponse, &ctx, 2048, eventBase, alloc);
     Event_socketRead(responseFromCore, &ctx, fromCoreFd, eventBase, alloc, eh);
