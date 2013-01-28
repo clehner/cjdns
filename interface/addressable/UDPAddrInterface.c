@@ -123,6 +123,10 @@ struct AddrInterface* UDPAddrInterface_new(struct EventBase* base,
     }), sizeof(struct UDPAddrInterface_pvt));
     Identity_set(context);
 
+    if (addr) {
+        Log_debug(logger, "Binding to address [%s]", Sockaddr_print(addr, allocator));
+    }
+
     int af = addr ? Sockaddr_getFamily(addr) : Sockaddr_AF_INET;
     context->socket = Socket_socket(af, Socket_SOCK_DGRAM, 0, allocator);
     if (context->socket < 0) {

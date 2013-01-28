@@ -12,15 +12,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define string_strrchr
+#define string_strchr
+#define string_strlen
 #include "benc/String.h"
 #include "memory/Allocator.h"
 #include "util/platform/Sockaddr.h"
-#include "util/platform/libc/strlen.h"
+#include "util/platform/libc/string.h"
 #include "util/Bits.h"
 #include "util/Hex.h"
 
 #include <stdint.h>
-#include <event2/event.h>
+#include <uv.h>
 
 struct Sockaddr_pvt
 {
@@ -39,12 +42,20 @@ struct Sockaddr_in6_pvt
     struct sockaddr_in6 si;
 };
 
-const struct Sockaddr* const Sockaddr_LOOPBACK =
+const struct Sockaddr* const Sockaddr_LOOPBACK_be =
     (const struct Sockaddr*) &((const struct Sockaddr_in_pvt) {
         .pub = { .addrLen = sizeof(struct Sockaddr_in_pvt) },
         .si = {
             .sin_family = AF_INET,
             .sin_addr = { .s_addr = 0x7f000001 }
+        }
+    });
+const struct Sockaddr* const Sockaddr_LOOPBACK_le =
+    (const struct Sockaddr*) &((const struct Sockaddr_in_pvt) {
+        .pub = { .addrLen = sizeof(struct Sockaddr_in_pvt) },
+        .si = {
+            .sin_family = AF_INET,
+            .sin_addr = { .s_addr = 0x0100007f }
         }
     });
 const struct Sockaddr* const Sockaddr_LOOPBACK6 =
@@ -66,12 +77,70 @@ struct Sockaddr* Sockaddr_fromNative(const void* ss, int addrLen, struct Allocat
 
 int Sockaddr_parse(const char* str, struct Sockaddr_storage* out)
 {
-    int addrLen = Sockaddr_MAXSIZE;
-    int ret = evutil_parse_sockaddr_port(str, (struct sockaddr*) out->nativeAddr, &addrLen);
-    if (!ret) {
-        out->addr.addrLen = addrLen + Sockaddr_OVERHEAD;
+    Bits_memset(out, 0, sizeof(struct Sockaddr_storage));
+    char* lastColon = strrchr(str, ':');
+    if (!lastColon || lastColon == strchr(str, ':')) {
+        // IPv4
+        int port = 0;
+        int addrLen;
+        if (lastColon) {
+            addrLen = (lastColon - str);
+            port = atoi(lastColon+1);
+            if (port > 65535 || port < 0) {
+                return -1;
+            }
+        } else {
+            addrLen = strlen(str);
+        }
+        uint8_t addr[16] = {0};
+        if (addrLen > 15 || addrLen < 7) {
+            return -1;
+        }
+        Bits_memcpy(addr, str, addrLen);
+        struct sockaddr_in* in = ((struct sockaddr_in*) Sockaddr_asNative(&out->addr));
+        if (uv_inet_pton(AF_INET, (char*) addr, &in->sin_addr).code != UV_OK) {
+            return -1;
+        }
+        out->addr.addrLen = sizeof(struct sockaddr_in) + Sockaddr_OVERHEAD;
+        in->sin_port = Endian_hostToBigEndian16(port);
+        in->sin_family = AF_INET;
+    } else {
+        // IPv6
+        int port = 0;
+        int addrLen;
+        if (*str == '[') {
+            str++;
+            {
+                char* endBracket = strchr(str, ']');
+                if (!endBracket) {
+                    return -1;
+                }
+                addrLen = (endBracket - str);
+            }
+            if (str[addrLen+1] == ':') {
+                port = atoi(&str[addrLen+2]);
+                if (port > 65535 || port < 0) {
+                    return -1;
+                }
+            }
+        } else {
+            addrLen = strlen(str);
+        }
+        uint8_t addr[40] = {0};
+        if (addrLen > 39 || addrLen < 2) {
+            return -1;
+        }
+        Bits_memcpy(addr, str, addrLen);
+        struct sockaddr_in6* in6 = (struct sockaddr_in6*) Sockaddr_asNative(&out->addr);
+        uv_err_t ret = uv_inet_pton(AF_INET6, (char*) addr, &in6->sin6_addr);
+        if (ret.code != UV_OK) {
+            return -1;
+        }
+        out->addr.addrLen = sizeof(struct sockaddr_in6) + Sockaddr_OVERHEAD;
+        in6->sin6_port = Endian_hostToBigEndian16(port);
+        in6->sin6_family = AF_INET6;
     }
-    return ret;
+    return 0;
 }
 
 struct Sockaddr* Sockaddr_clone(const struct Sockaddr* addr, struct Allocator* alloc)
@@ -111,7 +180,8 @@ char* Sockaddr_print(struct Sockaddr* sockaddr, struct Allocator* alloc)
 
     #define BUFF_SZ 64
     char printedAddr[BUFF_SZ] = {0};
-    if (!evutil_inet_ntop(addr->ss.ss_family, inAddr, printedAddr, BUFF_SZ - 1)) {
+    uv_err_t ret = uv_inet_ntop(addr->ss.ss_family, inAddr, printedAddr, BUFF_SZ - 1);
+    if (ret.code != UV_OK) {
         return "invalid";
     }
 

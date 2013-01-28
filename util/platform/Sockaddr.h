@@ -16,6 +16,7 @@
 #define Sockaddr_H
 
 #include "memory/Allocator.h"
+#include "util/Endian.h"
 
 #include <stdint.h>
 
@@ -37,7 +38,10 @@ struct Sockaddr_storage
 };
 
 /** 127.0.0.1 and ::1 addresses for building from. */
-const struct Sockaddr* const Sockaddr_LOOPBACK;
+const struct Sockaddr* const Sockaddr_LOOPBACK_be;
+const struct Sockaddr* const Sockaddr_LOOPBACK_le;
+#define Sockaddr_LOOPBACK (Endian_isBigEndian() ? Sockaddr_LOOPBACK_be : Sockaddr_LOOPBACK_le)
+
 const struct Sockaddr* const Sockaddr_LOOPBACK6;
 
 /**
@@ -95,12 +99,12 @@ struct Sockaddr* Sockaddr_fromNative(const void* ss, int addrLen, struct Allocat
 
 static inline void* Sockaddr_asNative(struct Sockaddr* sa)
 {
-    return (void*)(&(sa)[1]);
+    return (void*)(&sa[1]);
 }
 
 static inline const void* Sockaddr_asNativeConst(const struct Sockaddr* sa)
 {
-    return (void*)(&(sa)[1]);
+    return (const void*)(&sa[1]);
 }
 
 /**

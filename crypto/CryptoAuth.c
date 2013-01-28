@@ -37,7 +37,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <event2/event.h>
 
 #ifdef WIN32
     #undef interface

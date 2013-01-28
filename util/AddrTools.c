@@ -14,8 +14,6 @@
  */
 #include "util/AddrTools.h"
 
-#include <event2/event.h>
-
 int AddrTools_parseSockaddrPort(const char* addrStr, void* addrOut, int* addrLen)
 {
     return evutil_parse_sockaddr_port(addrStr, (struct sockaddr*)addrOut, addrLen);

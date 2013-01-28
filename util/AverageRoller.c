@@ -16,7 +16,6 @@
 #include "util/Bits.h"
 #include "util/events/Time.h"
 
-#include <event2/event.h>
 #include "util/platform/libc/string.h"
 
 /** Used to represent the sum and entry count for a given second. */

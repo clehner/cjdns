@@ -9,13 +9,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-add_library(cjdns-util-events-libevent
-    EventBase.c
-    Event.c
-    Time.c
-    Timeout.c
+set(Test_FILES
+    Sockaddr_test.c
 )
-target_link_libraries(cjdns-util-events-libevent
+set(Test_LIBRARIES
+    cjdns-util-platform-socket
     cjdmemory
-    ${LIBEVENT2_LIBRARIES}
 )
+include(${CMAKE_SOURCE_DIR}/cmake/modules/Test.cmake)

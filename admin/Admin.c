@@ -13,14 +13,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "admin/Admin.h"
-//#include "admin/angel/Angel.h"
 #include "benc/String.h"
 #include "benc/Dict.h"
-//#include "benc/List.h"
 #include "benc/serialization/BencSerializer.h"
 #include "benc/serialization/standard/StandardBencSerializer.h"
-//#include "dht/CJDHTConstants.h"
-//#include "exception/Except.h"
 #include "interface/addressable/AddrInterface.h"
 #include "io/Reader.h"
 #include "io/ArrayReader.h"
@@ -32,10 +28,8 @@
 #include "util/Bits.h"
 #include "util/Hex.h"
 #include "util/log/Log.h"
-//#include "util/Security.h"
 #include "util/events/Time.h"
 #include "util/Identity.h"
-//#include "util/events/Timeout.h"
 #include "util/platform/Sockaddr.h"
 
 #define string_strstr
@@ -44,13 +38,6 @@
 #include "util/platform/libc/string.h"
 
 #include <crypto_hash_sha256.h>
-//#include <limits.h>
-//#include <stdbool.h>
-//#include <unistd.h>
-
-#ifdef WIN32
-    #define EWOULDBLOCK WSAEWOULDBLOCK
-#endif
 
 static String* TYPE =     String_CONST_SO("type");
 static String* REQUIRED = String_CONST_SO("required");

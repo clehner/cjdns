@@ -13,7 +13,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "util/platform/Socket.h"
-#include <event2/event.h>
+
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 const int Socket_AF_INET = AF_INET;
 const int Socket_AF_INET6 = AF_INET6;
@@ -22,17 +25,35 @@ const int Socket_SOCK_STREAM = SOCK_STREAM;
 
 int Socket_makeNonBlocking(int sock)
 {
-    return evutil_make_socket_nonblocking(sock);
+    #ifdef WIN32
+        u_long one = 1;
+        return ioctlsocket(sock, FIONBIO, &nonblocking);
+    #else
+        int flags;
+        if ((flags = fcntl(sock, F_GETFL, NULL)) < 0) {
+            return -1;
+        }
+        return (fcntl(sock, F_SETFL, flags | O_NONBLOCK) != -1);
+    #endif
 }
 
 int Socket_makeReusable(int sock)
 {
-    return evutil_make_listen_socket_reuseable(sock);
+    #ifndef WIN32
+        int one = 1;
+        return setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    #else
+        return 0;
+    #endif
 }
 
 int Socket_close(int sock)
 {
-    return EVUTIL_CLOSESOCKET(sock);
+    #ifdef WIN32
+        return closesocket(sock);
+    #else
+        return close(sock);
+    #endif
 }
 
 int Socket_recv(int sockfd, void* buff, size_t bufferSize, int flags)

@@ -25,7 +25,6 @@ target_link_libraries(dhtcore
     util
     crypto
     switch
-    ${LIBEVENT2_LIBRARIES}
     cjdns-util-version-version
 )
 

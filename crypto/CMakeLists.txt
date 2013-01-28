@@ -25,7 +25,6 @@ target_link_libraries(crypto
     cjdbenc
     cjdmemory
     ${NACL_LIBRARIES}
-    ${LIBEVENT2_LIBRARIES}
     util
 )
 

@@ -24,7 +24,6 @@
 #include "wire/Message.h"
 
 #include <stdint.h>
-#include <event2/event.h>
 
 /** The number of seconds of inactivity before a session should expire. */
 #define SESSION_TIMEOUT_SECONDS 600

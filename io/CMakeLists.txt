@@ -10,7 +10,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 add_library(cjdio ArrayReader.c ArrayWriter.c FileReader.c FileWriter.c)
-target_link_libraries(cjdio cjdmemory ${LIBEVENT2_LIBRARIES})
+target_link_libraries(cjdio
+    cjdmemory
+)
 
 # Everything must be tested.
 enable_testing()

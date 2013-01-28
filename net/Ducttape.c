@@ -42,7 +42,6 @@
 #include "wire/Ethernet.h"
 
 #include <stdint.h>
-#include <event2/event.h>
 #include <setjmp.h>
 
 /** Size of the per-message workspace. */
