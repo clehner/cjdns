@@ -15,7 +15,7 @@
 #ifndef PipeInterface_H
 #define PipeInterface_H
 
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "interface/Interface.h"
 #include "exception/Except.h"
 #include "memory/Allocator.h"

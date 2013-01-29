@@ -18,7 +18,7 @@
 #include "benc/List.h"
 #include "benc/serialization/standard/StandardBencSerializer.h"
 #include "benc/serialization/BencSerializer.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "io/ArrayWriter.h"
 #include "io/ArrayReader.h"
 #include "interface/TUNMessageType.h"

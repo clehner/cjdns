@@ -25,7 +25,7 @@
 #include "benc/serialization/BencSerializer.h"
 #include "benc/serialization/standard/StandardBencSerializer.h"
 #include "crypto/AddressCalc.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "dht/ReplyModule.h"
 #include "dht/SerializationModule.h"
 #include "dht/dhtcore/RouterModule_admin.h"

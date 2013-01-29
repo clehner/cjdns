@@ -14,7 +14,7 @@
  */
 #include "crypto/CryptoAuth_pvt.h"
 #include "crypto/ReplayProtector.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "interface/Interface.h"
 #include "benc/Object.h"
 #include "util/log/Log.h"

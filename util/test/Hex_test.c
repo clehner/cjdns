@@ -15,7 +15,7 @@
 #define string_strlen
 #define string_strstr
 #define string_strcmp
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "memory/BufferAllocator.h"
 #include "util/platform/libc/string.h"
 #include "util/Bits.h"

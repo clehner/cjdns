@@ -14,7 +14,7 @@
  */
 #define string_strcmp
 #define string_strlen
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "crypto/CryptoAuth.h"
 #include "dht/ReplyModule.h"
 #include "dht/dhtcore/RouterModule.h"

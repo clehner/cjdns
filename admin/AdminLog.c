@@ -16,7 +16,7 @@
 #include "admin/AdminLog.h"
 #include "benc/Dict.h"
 #include "benc/String.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "io/Writer.h"
 #include "memory/BufferAllocator.h"
 #include "util/log/Log.h"

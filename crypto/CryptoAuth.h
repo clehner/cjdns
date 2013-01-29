@@ -16,7 +16,7 @@
 #define CryptoAuth_H
 
 #include "benc/Object.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "interface/Interface.h"
 #include "memory/Allocator.h"
 #include "util/Endian.h"

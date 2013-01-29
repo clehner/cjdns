@@ -16,7 +16,7 @@
 #include "memory/Allocator.h"
 #include "memory/MallocAllocator.h"
 #include "memory/CanaryAllocator.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "interface/ICMP6Generator_pvt.h"
 #include "wire/Headers.h"
 #include "util/Assert.h"

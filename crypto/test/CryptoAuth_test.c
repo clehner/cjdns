@@ -15,7 +15,7 @@
 #define string_strcmp
 #define string_strncmp
 #define string_strlen
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "crypto/CryptoAuth.h"
 #include "crypto/test/Exports.h"
 #include "io/FileWriter.h"

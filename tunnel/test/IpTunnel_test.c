@@ -22,7 +22,7 @@
 #include "util/log/Log.h"
 #include "util/log/WriterLog.h"
 #include "util/events/EventBase.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "crypto/AddressCalc.h"
 #include "tunnel/IpTunnel.h"
 #include "util/platform/libc/string.h"

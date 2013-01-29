@@ -12,7 +12,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "crypto/random/seed/RandomSeed.h"
 #include "memory/Allocator.h"
 #include "util/Assert.h"
@@ -53,8 +53,8 @@ struct Random
     /** the next number to read out of buff. */
     int nextLong;
 
-    /** The offset to store the next number in collectedEntropy see Random_addRandom(). */
-    int nextCollect;
+    /** A counter which Random_addRandom() uses to rotate the random input. */
+    int addRandomCounter;
 
     /** The seed generator for generating new temporary random seeds. */
     union Random_SeedGen* seedGen;
@@ -78,13 +78,13 @@ void Random_addRandom(struct Random* rand, uint64_t randomNumber)
 {
     Identity_check(rand);
     #define rotl(a,b) (((a) << (b)) | ((a) >> (64 - (b))))
-    rand->seedGen->elements.collectedEntropy[rand->nextCollect & 3] ^=
-        rotl(randomNumber, rand->nextCollect >> 2);
-    if (++rand->nextCollect >= 256) {
+    rand->seedGen->elements.collectedEntropy[rand->addRandomCounter & 3] ^=
+        rotl(randomNumber, rand->addRandomCounter >> 2);
+    if (++rand->addRandomCounter >= 256) {
         crypto_hash_sha256((uint8_t*)rand->tempSeed,
                            (uint8_t*)rand->seedGen->buff,
                            sizeof(union Random_SeedGen));
-        rand->nextCollect = 0;
+        rand->addRandomCounter = 0;
     }
 }
 

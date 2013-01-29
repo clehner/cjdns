@@ -16,7 +16,7 @@
 #define RouterModule_H
 
 #include "admin/Admin.h"
-#include "crypto/Random.h"
+#include "crypto/random/Random.h"
 #include "dht/Address.h"
 #include "dht/DHTModuleRegistry.h"
 #include "dht/dhtcore/Node.h"
