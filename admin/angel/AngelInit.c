@@ -176,13 +176,13 @@ int AngelInit_main(int argc, char** argv)
     }
 
     struct Allocator* alloc = MallocAllocator_new(1<<20);
-    struct Random* rand = Random_new(alloc, eh);
+    struct Writer* logWriter = FileWriter_new(stdout, alloc);
+    struct Log* logger = WriterLog_new(logWriter, alloc);
+    struct Random* rand = Random_new(alloc, logger, eh);
     alloc = CanaryAllocator_new(alloc, rand);
     struct Allocator* tempAlloc = Allocator_child(alloc);
     struct EventBase* eventBase = EventBase_new(alloc);
 
-    struct Writer* logWriter = FileWriter_new(stdout, alloc);
-    struct Log* logger = WriterLog_new(logWriter, alloc);
 
     Log_debug(logger, "Initializing angel with input [%d] and output [%d]",
               inFromClientNo, outToClientNo);

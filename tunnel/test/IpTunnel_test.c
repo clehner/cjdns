@@ -91,7 +91,7 @@ int main()
     struct Allocator* alloc = CanaryAllocator_new(MallocAllocator_new(1<<20), NULL);
     struct Writer* w = FileWriter_new(stdout, alloc);
     struct Log* logger = WriterLog_new(w, alloc);
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, logger, NULL);
     struct EventBase* eb = EventBase_new(alloc);
 
     struct IpTunnel* ipTun = IpTunnel_new(logger, eb, alloc, rand, NULL);

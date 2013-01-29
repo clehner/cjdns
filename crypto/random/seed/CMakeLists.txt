@@ -9,23 +9,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-add_library(dhtcore
-    NodeStore.c
-    RouterModule.c
-    RouterModule_admin.c
-    SearchStore.c
-    Janitor.c
-    VersionList.c
+
+# This is needed because NACL must be built first because header files are generated.
+add_library(cjdns-crypto-random-seed
+    BsdKernArndSysctlRandomSeed.c
+    DevUrandomRandomSeed.c
+    LinuxRandomUuidSysctlRandomSeed.c
+    ProcSysKernelRandomUuidRandomSeed.c
+    RandomSeed.c
+    RtlGenRandomSeed.c
 )
 
-target_link_libraries(dhtcore
-    cjdbenc
+add_dependencies(cjdns-crypto-random-seed NACL)
+
+target_link_libraries(cjdns-crypto-random-seed
     util
-    crypto
-    switch
-    cjdns-util-version-version
+    ${NACL_LIBRARIES}
 )
-
-# Everything must be tested.
-enable_testing()
-add_subdirectory(test)

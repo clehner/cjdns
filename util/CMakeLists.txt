@@ -14,7 +14,6 @@ add_subdirectory(version)
 add_subdirectory(events)
 add_subdirectory(platform)
 
-find_package(Libevent2 REQUIRED)
 find_package(Socket REQUIRED)
 
 add_library(cjdns-errno Errno.c)
@@ -57,4 +56,3 @@ target_link_libraries(util
 # Everything must be tested.
 enable_testing()
 add_subdirectory(test)
-

@@ -28,7 +28,7 @@ int main()
     struct Allocator* alloc;
     BufferAllocator_STACK(alloc, 1024);
 
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, NULL, NULL);
 
     Random_bytes(rand, (uint8_t*)randomShorts, sizeof(randomShorts));
 

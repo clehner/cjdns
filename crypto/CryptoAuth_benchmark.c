@@ -114,7 +114,7 @@ void CryptoAuth_benchmark(struct EventBase* base,
                           struct Log* logger,
                           struct Allocator* alloc)
 {
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, logger, NULL);
     struct Context ctx = {
         .ca1 = CryptoAuth_new(alloc, NULL, base, NULL, rand),
         .ca2 = CryptoAuth_new(alloc, privateKey, base, NULL, rand),

@@ -213,8 +213,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 find_package(Libuv REQUIRED)
 
-find_package(Libevent2 REQUIRED)
-
 find_package(NACL REQUIRED)
 include_directories(${NACL_INCLUDE_DIRS})
 

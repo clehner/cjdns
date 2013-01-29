@@ -12,32 +12,33 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "crypto/Random.h"
-#include "memory/BufferAllocator.h"
-#include "util/Bits.h"
-#include "util/Base32.h"
-#include "util/Assert.h"
+#include "crypto/random/seed/RtlGenRandomSeed.h"
 
-#include <stdio.h>
+#ifdef WIN32
+#include <stdint.h>
+#include <ntsecapi.h>
 
-int main()
+static int get(struct RandomSeed* rand, uint64_t buff[8])
 {
-    struct Allocator* alloc;
-    BufferAllocator_STACK(alloc, 2048);
-    struct Random* rand = Random_new(alloc, NULL, NULL);
+    Bits_memset(buff, 0, 64);
+    int ret = RtlGenRandom(buff, 64);
+    if (!ret || Bits_isZero(buff, 64)) {
+        return -1;
+    }
+    return 0;
+}
 
-    uint8_t bytes[32];
-    Random_bytes(rand, bytes, 32);
+#else
+static int get(struct RandomSeed* rand, uint64_t buff[8])
+{
+    return -1;
+}
+#endif
 
-    uint8_t base32[64];
-    Bits_memset(base32, 0, 64);
-
-    Assert_always(Base32_encode(base32, 64, bytes, 32) == 52);
-
-    //printf("base32 encoded: %s\n", base32);
-
-    uint8_t bytes2[32];
-    Assert_always(Base32_decode(bytes2, 32, base32, 52) == 32);
-
-    Assert_always(Bits_memcmp(bytes, bytes2, 32) == 0);
+struct RandomSeed* RtlGenRandomSeed_new(struct Allocator* alloc)
+{
+    return Allocator_clone(alloc, (&(struct RandomSeed) {
+        .get = get,
+        .name = "RtlGenRandom() (Windows)"
+    }));
 }

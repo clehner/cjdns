@@ -203,14 +203,14 @@ int Core_main(int argc, char** argv)
     }
 
     struct Allocator* unsafeAlloc = MallocAllocator_new(ALLOCATOR_FAILSAFE);
-    struct Random* rand = Random_new(unsafeAlloc, eh);
+    struct Writer* logWriter = FileWriter_new(stderr, unsafeAlloc);
+    struct Log* preLogger = WriterLog_new(logWriter, unsafeAlloc);
+    struct Random* rand = Random_new(unsafeAlloc, preLogger, eh);
     struct Allocator* alloc = CanaryAllocator_new(unsafeAlloc, rand);
     struct Allocator* tempAlloc = Allocator_child(alloc);
     struct EventBase* eventBase = EventBase_new(alloc);
 
     // -------------------- Setup the Pre-Logger ---------------------- //
-    struct Writer* logWriter = FileWriter_new(stderr, tempAlloc);
-    struct Log* preLogger = WriterLog_new(logWriter, tempAlloc);
     struct IndirectLog* indirectLogger = IndirectLog_new(alloc);
     indirectLogger->wrappedLog = preLogger;
     struct Log* logger = &indirectLogger->pub;

@@ -146,7 +146,7 @@ static void fragTest(struct Allocator* mainAlloc,
 int main()
 {
     struct Allocator* alloc = MallocAllocator_new(20000);
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, NULL, NULL);
     mtuTest(alloc, rand, 2048, 1500);
     mtuTest(alloc, rand, 1500, 1492);
     mtuTest(alloc, rand, 1492, 1280);

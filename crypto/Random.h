@@ -17,13 +17,14 @@
 
 #include "memory/Allocator.h"
 #include "exception/Except.h"
+#include "util/log/Log.h"
 
 #include <stdint.h>
 
 struct Random;
 
 #define Random_new_INIT_FAILED -1
-struct Random* Random_new(struct Allocator* alloc, struct Except* eh);
+struct Random* Random_new(struct Allocator* alloc, struct Log* logger, struct Except* eh);
 
 void Random_bytes(struct Random* rand, uint8_t* location, uint64_t count);
 

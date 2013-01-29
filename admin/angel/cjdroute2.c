@@ -370,7 +370,7 @@ int main(int argc, char** argv)
 
     // Allow it to allocate 4MB
     struct Allocator* allocator = MallocAllocator_new(1<<22);
-    struct Random* rand = Random_new(allocator, eh);
+    struct Random* rand = Random_new(allocator, NULL, eh);
     struct EventBase* eventBase = EventBase_new(allocator);
 
     if (argc == 2) {

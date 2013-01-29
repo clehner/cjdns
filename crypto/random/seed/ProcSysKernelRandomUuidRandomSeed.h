@@ -12,32 +12,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "crypto/Random.h"
-#include "memory/BufferAllocator.h"
-#include "util/Bits.h"
-#include "util/Base32.h"
-#include "util/Assert.h"
+#ifndef ProcSysKernelRandomUuidRandomSeed_H
+#define ProcSysKernelRandomUuidRandomSeed_H
 
-#include <stdio.h>
+#include "crypto/random/seed/RandomSeed.h"
+#include "memory/Allocator.h"
 
-int main()
-{
-    struct Allocator* alloc;
-    BufferAllocator_STACK(alloc, 2048);
-    struct Random* rand = Random_new(alloc, NULL, NULL);
+struct RandomSeed* ProcSysKernelRandomUuidRandomSeed_new(struct Allocator* alloc);
 
-    uint8_t bytes[32];
-    Random_bytes(rand, bytes, 32);
-
-    uint8_t base32[64];
-    Bits_memset(base32, 0, 64);
-
-    Assert_always(Base32_encode(base32, 64, bytes, 32) == 52);
-
-    //printf("base32 encoded: %s\n", base32);
-
-    uint8_t bytes2[32];
-    Assert_always(Base32_decode(bytes2, 32, base32, 52) == 32);
-
-    Assert_always(Bits_memcmp(bytes, bytes2, 32) == 0);
-}
+#endif

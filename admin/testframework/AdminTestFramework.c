@@ -160,7 +160,7 @@ struct AdminTestFramework* AdminTestFramework_setUp(int argc, char** argv)
     struct Log* logger = WriterLog_new(logwriter, alloc);
 
     struct EventBase* eventBase = EventBase_new(alloc);
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, logger, NULL);
 
     int fromAngel;
     int toAngel;

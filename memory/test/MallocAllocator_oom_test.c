@@ -37,7 +37,7 @@ int main()
 {
     Security_maxMemory(1<<20, NULL);
     struct Allocator* alloc = MallocAllocator_new(1<<19);
-    struct Random* rand = Random_new(alloc, NULL);
+    struct Random* rand = Random_new(alloc, NULL, NULL);
     overflow(alloc, rand);
     // sometimes it doesn't use up all of it's space.
     //Assert_always(0);
