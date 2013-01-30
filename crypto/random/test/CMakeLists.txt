@@ -9,26 +9,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-add_library(cjdns-crypto-random
-    Random.c
+
+add_library(cjdns-crypto-random-test
+    DeterminentRandomSeed.c
 )
 
-# This is needed because NACL must be built first because header files are generated.
-add_dependencies(cjdns-crypto-random NACL)
-
-target_link_libraries(cjdns-crypto-random
-    ${NACL_LIBRARIES}
-    cjdns-crypto-random-seed
+set(Test_FILES
+    Random_test.c
 )
-
-add_executable(randombytes
-    randombytes.c
-)
-target_link_libraries(randombytes
+set(Test_LIBRARIES
     cjdns-crypto-random
+    cjdns-crypto-random-test
+    cjdio
 )
-
-add_subdirectory(seed)
-
-enable_testing()
-add_subdirectory(test)
+include(${CMAKE_SOURCE_DIR}/cmake/modules/Test.cmake)

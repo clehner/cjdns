@@ -51,7 +51,7 @@ struct RandomSeed_pvt
     Identity
 };
 
-int RandomSeed_get(struct RandomSeed* rs, uint64_t buffer[8])
+static int get(struct RandomSeed* rs, uint64_t buffer[8])
 {
     struct RandomSeed_pvt* ctx = Identity_cast((struct RandomSeed_pvt*) rs);
     Log_info(ctx->logger, "Attempting to seed random number generator");
@@ -82,6 +82,11 @@ int RandomSeed_get(struct RandomSeed* rs, uint64_t buffer[8])
         Log_error(ctx->logger, "Seeding random number generator failed");
         return -1;
     }
+}
+
+int RandomSeed_get(struct RandomSeed* rs, uint64_t buffer[8])
+{
+    return rs->get(rs, buffer);
 }
 
 struct RandomSeed* RandomSeed_new(RandomSeed_Provider* providers,
@@ -117,6 +122,8 @@ struct RandomSeed* RandomSeed_new(RandomSeed_Provider* providers,
     out->rsList = rsList;
     out->rsCount = i;
     out->logger = logger;
+    out->pub.get = get;
+    out->pub.name = "RandomSeed conglomeration of random seed providers";
     Identity_set(out);
 
     return &out->pub;
