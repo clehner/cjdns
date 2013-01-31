@@ -63,6 +63,7 @@ target_link_libraries(cjdns-core
     cjdns-util-log-indirect
     cjdns-tunnel-iptunnel
     cjdns-crypto-random
+    cjdns-crypto-random-libuv
     cjdns-memory-canary
     cjdns-interface-addressable
 )

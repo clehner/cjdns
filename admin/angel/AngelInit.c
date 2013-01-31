@@ -220,9 +220,6 @@ int AngelInit_main(int argc, char** argv)
         Except_raise(eh, -1, "missing configuration params in preconfig. [%s]", buff);
     }
 
-    //int tcpSocket;
-    //String* boundAddr = bindListener(bind, alloc, eh, &tcpSocket);
-
     if (core) {
         Log_info(logger, "Initializing core [%s]", core->bytes);
         initCore(core->bytes, &toCore, &fromCore, eh);
@@ -238,9 +235,12 @@ int AngelInit_main(int argc, char** argv)
 
     struct Message* coreResponse = InterfaceWaiter_waitForData(coreIface, eventBase, tempAlloc, eh);
     write(outToClientNo, coreResponse->bytes, coreResponse->length);
+
     #ifdef Log_KEYS
-        coreResponse->bytes[coreResponse->length] = 0;
-        Log_keys(logger, "Sent [%s] to client.", coreResponse->bytes);
+        uint8_t lastChar = coreResponse->bytes[coreResponse->length-1];
+        coreResponse->bytes[coreResponse->length-1] = 0;
+        Log_keys(logger, "Sent [%s%c] to client.", coreResponse->bytes, lastChar);
+        coreResponse->bytes[coreResponse->length-1] = lastChar;
     #endif
 
     if (user) {

@@ -14,6 +14,7 @@
  */
 #include "admin/Admin.h"
 #include "benc/String.h"
+#include "benc/Int.h"
 #include "benc/Dict.h"
 #include "benc/serialization/BencSerializer.h"
 #include "benc/serialization/standard/StandardBencSerializer.h"
@@ -29,6 +30,7 @@
 #include "util/Hex.h"
 #include "util/log/Log.h"
 #include "util/events/Time.h"
+#include "util/events/Timeout.h"
 #include "util/Identity.h"
 #include "util/platform/Sockaddr.h"
 
@@ -46,6 +48,41 @@ static String* INTEGER =  String_CONST_SO("Int");
 static String* DICT =     String_CONST_SO("Dict");
 static String* LIST =     String_CONST_SO("List");
 static String* TXID =     String_CONST_SO("txid");
+
+/** Number of milliseconds before a session times out and outgoing messages are failed. */
+#define TIMEOUT_MILLISECONDS 30000
+
+/** map values for tracking time of last message by source address */
+struct MapValue
+{
+    /** time when the last incoming message was received. */
+    uint64_t timeOfLastMessage;
+
+    /** used to allocate the memory for the key (Sockaddr) and value (this). */
+    struct Allocator* allocator;
+};
+
+//////// generate time-of-last-message-by-address map
+
+#define Map_USE_HASH
+#define Map_USE_COMPARATOR
+#define Map_NAME LastMessageTimeByAddr
+#define Map_KEY_TYPE struct Sockaddr*
+#define Map_VALUE_TYPE struct MapValue*
+#include "util/Map.h"
+
+static inline uint32_t Map_LastMessageTimeByAddr_hash(struct Sockaddr** key)
+{
+    uint32_t* k = (uint32_t*) *key;
+    return k[ ((*key)->addrLen / 4)-1 ];
+}
+
+static inline int Map_LastMessageTimeByAddr_compare(struct Sockaddr** keyA, struct Sockaddr** keyB)
+{
+    return Bits_memcmp(*keyA, *keyB, (*keyA)->addrLen);
+}
+
+/////// end map
 
 struct Function
 {
@@ -69,6 +106,14 @@ struct Admin
     struct Log* logger;
 
     struct AddrInterface* iface;
+
+    struct Map_LastMessageTimeByAddr map;
+
+    /** non-zero if we are currently in an admin request. */
+    int inRequest;
+
+    /** non-zero if this session able to receive asynchronous messages. */
+    int asyncEnabled;
 
     /** Length of addresses of clients which communicate with admin. */
     uint32_t addrLen;
@@ -106,6 +151,37 @@ static int sendBenc(Dict* message, struct Sockaddr* dest, struct Admin* admin)
 }
 
 /**
+ * If no incoming data has been sent by this address in TIMEOUT_MILLISECONDS
+ * then Admin_sendMessage() should fail so that it doesn't endlessly send
+ * udp packets into outer space after a logging client disconnects.
+ */
+static int checkAddress(struct Admin* admin, int index, uint64_t now)
+{
+    uint64_t diff = now - admin->map.values[index]->timeOfLastMessage;
+    // check for backwards time
+    if (diff > TIMEOUT_MILLISECONDS && diff < ((uint64_t)INT64_MAX)) {
+        Allocator_free(admin->map.values[index]->allocator);
+        Map_LastMessageTimeByAddr_remove(index, &admin->map);
+        return -1;
+    }
+
+    return 0;
+}
+
+static void clearExpiredAddresses(void* vAdmin)
+{
+    struct Admin* admin = Identity_cast((struct Admin*) vAdmin);
+    uint64_t now = Time_currentTimeMilliseconds(admin->eventBase);
+    int count = 0;
+    for (int i = admin->map.count - 1; i >= 0; i--) {
+        if (checkAddress(admin, i, now)) {
+            count++;
+        }
+    }
+    Log_debug(admin->logger, "Cleared [%d] expired sessions", count);
+}
+
+/**
  * public function to send responses
  */
 int Admin_sendMessage(Dict* message, String* txid, struct Admin* admin)
@@ -118,6 +194,18 @@ int Admin_sendMessage(Dict* message, String* txid, struct Admin* admin)
 
     struct Sockaddr_storage addr;
     Bits_memcpy(&addr, txid->bytes, admin->addrLen);
+
+    // if this is an async call, check if we've got any input from that client.
+    // if the client is nresponsive then fail the call so logs don't get sent
+    // out forever after a disconnection.
+    if (!admin->inRequest) {
+        struct Sockaddr* addrPtr = (struct Sockaddr*) &addr.addr;
+        int index = Map_LastMessageTimeByAddr_indexForKey(&addrPtr, &admin->map);
+        uint64_t now = Time_currentTimeMilliseconds(admin->eventBase);
+        if (index < 0 || checkAddress(admin, index, now)) {
+            return -1;
+        }
+    }
 
     struct Allocator* allocator;
     BufferAllocator_STACK(allocator, 256);
@@ -199,6 +287,14 @@ static bool checkArgs(Dict* args, struct Function* func, String* txid, struct Ad
     return !error;
 }
 
+static void asyncEnabled(Dict* args, void* vAdmin, String* txid)
+{
+    struct Admin* admin = Identity_cast((struct Admin*) vAdmin);
+    int64_t enabled = admin->asyncEnabled;
+    Dict d = Dict_CONST(String_CONST("asyncEnabled"), Int_OBJ(enabled), NULL);
+    Admin_sendMessage(&d, txid, admin);
+}
+
 static void handleRequest(Dict* messageDict,
                           struct Message* message,
                           struct Sockaddr* src,
@@ -247,6 +343,24 @@ static void handleRequest(Dict* messageDict,
         authed = true;
     }
 
+    // Then sent a valid authed query, lets track their address so they can receive
+    // asynchronous messages.
+    int index = Map_LastMessageTimeByAddr_indexForKey(&src, &admin->map);
+    uint64_t now = Time_currentTimeMilliseconds(admin->eventBase);
+    admin->asyncEnabled = 1;
+    if (index >= 0) {
+        admin->map.values[index]->timeOfLastMessage = now;
+    } else if (authed) {
+        struct Allocator* entryAlloc = Allocator_child(admin->allocator);
+        struct MapValue* mv = Allocator_calloc(entryAlloc, sizeof(struct MapValue), 1);
+        mv->timeOfLastMessage = now;
+        mv->allocator = entryAlloc;
+        struct Sockaddr* storedAddr = Sockaddr_clone(src, entryAlloc);
+        Map_LastMessageTimeByAddr_put(&storedAddr, &mv, &admin->map);
+    } else {
+        admin->asyncEnabled = 0;
+    }
+
     Dict* args = Dict_getDict(messageDict, String_CONST("args"));
     bool noFunctionsCalled = true;
     for (int i = 0; i < admin->functionCount; i++) {
@@ -289,8 +403,8 @@ static void handleMessage(struct Message* message,
                           struct Admin* admin)
 {
     message->bytes[message->length] = '\0';
-    Log_debug(admin->logger, "Got message from [%s] [%s]",
-              Sockaddr_print(src, alloc), message->bytes);
+    Log_keys(admin->logger, "Got message from [%s] [%s]",
+             Sockaddr_print(src, alloc), message->bytes);
 
     // handle non empty message data
     if (message->length > Admin_MAX_REQUEST_SIZE) {
@@ -331,7 +445,11 @@ static uint8_t receiveMessage(struct Message* message, struct Interface* iface)
     Message_pop(message, &addrStore, admin->addrLen);
 
     struct Allocator* alloc = Allocator_child(admin->allocator);
+    admin->inRequest = 1;
+
     handleMessage(message, &addrStore.addr, alloc, admin);
+
+    admin->inRequest = 0;
     Allocator_free(alloc);
     return 0;
 }
@@ -395,14 +513,21 @@ struct Admin* Admin_new(struct AddrInterface* iface,
         .allocator = alloc,
         .logger = logger,
         .eventBase = eventBase,
-        .addrLen = iface->addr->addrLen
+        .addrLen = iface->addr->addrLen,
+        .map = {
+            .allocator = alloc
+        }
     }));
     Identity_set(admin);
 
-    admin->password = String_clone(password, alloc),
+    admin->password = String_clone(password, alloc);
+
+    Timeout_setInterval(clearExpiredAddresses, admin, TIMEOUT_MILLISECONDS * 3, eventBase, alloc);
 
     iface->generic.receiveMessage = receiveMessage;
     iface->generic.receiverContext = admin;
+
+    Admin_registerFunction("Admin_asyncEnabled", asyncEnabled, admin, false, NULL, admin);
 
     return admin;
 }

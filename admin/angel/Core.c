@@ -26,6 +26,7 @@
 #include "benc/serialization/standard/StandardBencSerializer.h"
 #include "crypto/AddressCalc.h"
 #include "crypto/random/Random.h"
+#include "crypto/random/libuv/LibuvEntropyProvider.h"
 #include "dht/ReplyModule.h"
 #include "dht/SerializationModule.h"
 #include "dht/dhtcore/RouterModule_admin.h"
@@ -205,15 +206,21 @@ int Core_main(int argc, char** argv)
     struct Allocator* unsafeAlloc = MallocAllocator_new(ALLOCATOR_FAILSAFE);
     struct Writer* logWriter = FileWriter_new(stderr, unsafeAlloc);
     struct Log* preLogger = WriterLog_new(logWriter, unsafeAlloc);
-    struct Random* rand = Random_new(unsafeAlloc, preLogger, eh);
-    struct Allocator* alloc = CanaryAllocator_new(unsafeAlloc, rand);
-    struct Allocator* tempAlloc = Allocator_child(alloc);
-    struct EventBase* eventBase = EventBase_new(alloc);
+    struct EventBase* eventBase = EventBase_new(unsafeAlloc);
 
     // -------------------- Setup the Pre-Logger ---------------------- //
-    struct IndirectLog* indirectLogger = IndirectLog_new(alloc);
+    struct IndirectLog* indirectLogger = IndirectLog_new(unsafeAlloc);
     indirectLogger->wrappedLog = preLogger;
     struct Log* logger = &indirectLogger->pub;
+
+    // -------------------- Setup the PRNG ---------------------- //
+    struct Random* rand =
+        LibuvEntropyProvider_newDefaultRandom(eventBase, logger, eh, unsafeAlloc);
+
+    // -------------------- Setup Protected Allocator ---------------------- //
+    struct Allocator* alloc = CanaryAllocator_new(unsafeAlloc, rand);
+    struct Allocator* tempAlloc = Allocator_child(alloc);
+
 
     // The first read inside of getInitialConfig() will begin it waiting.
     struct PipeInterface* pi =

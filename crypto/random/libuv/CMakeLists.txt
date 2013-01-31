@@ -9,27 +9,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-add_library(cjdns-crypto-random
-    Random.c
+
+include_directories(${LIBUV_INCLUDE_DIRS})
+
+add_library(cjdns-crypto-random-libuv
+    LibuvEntropyProvider.c
 )
 
 # This is needed because NACL must be built first because header files are generated.
-add_dependencies(cjdns-crypto-random NACL)
+#add_dependencies(cjdns-crypto-random NACL)
 
-target_link_libraries(cjdns-crypto-random
-    ${NACL_LIBRARIES}
-    cjdns-crypto-random-seed
-)
-
-add_executable(randombytes
-    randombytes.c
-)
-target_link_libraries(randombytes
+target_link_libraries(cjdns-crypto-random-libuv
     cjdns-crypto-random
+    ${LIBUV_LIBRARIES}
 )
 
-add_subdirectory(seed)
-add_subdirectory(libuv)
-
-enable_testing()
-add_subdirectory(test)
+set_target_properties(cjdns-crypto-random-libuv
+        PROPERTIES COMPILE_FLAGS "-D _GNU_SOURCE")

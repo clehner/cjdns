@@ -169,12 +169,12 @@ void Hermes_callAngel(Dict* message,
         .padding = PADDING
     };
 
+    Log_keys(hermes->logger, "Sending [%d] bytes to angel [%s].", m.length, m.bytes);
+
     int ret = hermes->iface->sendMessage(&m, hermes->iface);
     if (ret) {
         Except_raise(eh, Hermes_callAngel_ESEND, "Failed to send message to angel [%d]", ret);
     }
-
-    Log_keys(hermes->logger, "Sent [%d] bytes to angel [%s].", m.length, m.bytes);
 
     // Use interval as defensive programming
     // the Allocator_free() in the timeout callback deactivates it.
