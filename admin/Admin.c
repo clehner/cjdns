@@ -295,6 +295,31 @@ static void asyncEnabled(Dict* args, void* vAdmin, String* txid)
     Admin_sendMessage(&d, txid, admin);
 }
 
+#define ENTRIES_PER_PAGE 8
+static void availableFunctions(Dict* args, void* vAdmin, String* txid)
+{
+    struct Admin* admin = Identity_cast((struct Admin*) vAdmin);
+    int64_t* page = Dict_getInt(args, String_CONST("page"));
+    uint32_t i = (page) ? *page * ENTRIES_PER_PAGE : 0;
+    struct Allocator* tempAlloc = Allocator_child(admin->allocator);
+
+    Dict* d = Dict_new(tempAlloc);
+    Dict* functions = Dict_new(tempAlloc);
+    int count = 0;
+    for (; i < (uint32_t)admin->functionCount && count++ < ENTRIES_PER_PAGE; i++) {
+        Dict_putDict(functions, admin->functions[i].name, admin->functions[i].args, tempAlloc);
+    }
+    String* more = String_CONST("more");
+    if (count >= ENTRIES_PER_PAGE) {
+        Dict_putInt(d, more, 1, tempAlloc);
+    }
+    Dict_putDict(d, String_CONST("availableFunctions"), functions, tempAlloc);
+
+    Admin_sendMessage(d, txid, admin);
+    Allocator_free(tempAlloc);
+    return;
+}
+
 static void handleRequest(Dict* messageDict,
                           struct Message* message,
                           struct Sockaddr* src,
@@ -375,23 +400,13 @@ static void handleRequest(Dict* messageDict,
     }
 
     if (noFunctionsCalled) {
-        Dict* d = Dict_new(allocator);
-        String* list = String_CONST("availableFunctions");
-        if (!String_equals(query, list)) {
-            Dict_putString(d,
-                           String_CONST("error"),
-                           String_CONST("No functions matched your request."),
-                           allocator);
-        }
-        Dict* functions = Dict_new(allocator);
-        for (int i = 0; i < admin->functionCount; i++) {
-            Dict_putDict(functions, admin->functions[i].name, admin->functions[i].args, allocator);
-        }
-        if (functions) {
-            Dict_putDict(d, String_CONST("availableFunctions"), functions, allocator);
-        }
-        Admin_sendMessage(d, txid, admin);
-        return;
+        Dict d = Dict_CONST(
+            String_CONST("error"),
+            String_OBJ(String_CONST("No functions matched your request, "
+                                    "try Admin_availableFunctions()")),
+            NULL
+        );
+        Admin_sendMessage(&d, txid, admin);
     }
 
     return;
@@ -528,6 +543,10 @@ struct Admin* Admin_new(struct AddrInterface* iface,
     iface->generic.receiverContext = admin;
 
     Admin_registerFunction("Admin_asyncEnabled", asyncEnabled, admin, false, NULL, admin);
+    Admin_registerFunction("Admin_availableFunctions", availableFunctions, admin, false,
+        ((struct Admin_FunctionArg[]) {
+            { .name = "page", .required = 0, .type = "Int" }
+        }), admin);
 
     return admin;
 }

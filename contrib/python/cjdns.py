@@ -51,7 +51,6 @@ def callfunc(cjdns, funcName, password, args):
 
 
 def receiverThread(cjdns):
-    cjdns.socket.settimeout(.25);
     timeOfLastSend = time.time();
     timeOfLastRecv = time.time();
     try:
@@ -61,6 +60,7 @@ def receiverThread(cjdns):
                     raise Exception("ping timeout");
                 cjdns.socket.send('d1:q18:Admin_asyncEnabled4:txid8:keepalive');
                 timeOfLastSend = time.time();
+
             try:
                 data = cjdns.socket.recv(BUFFER_SIZE);
             except (socket.timeout): continue;
@@ -108,6 +108,7 @@ def _getMessage(cjdns, txid):
 def cjdns_connect(ipAddr, port, password):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
     sock.connect((ipAddr, port));
+    sock.settimeout(2);
 
     # Make sure it pongs.
     sock.send('d1:q4:pinge');
@@ -116,9 +117,18 @@ def cjdns_connect(ipAddr, port, password):
         raise Exception("Looks like " + ipAddr + ":" + str(port) + " is to a non-cjdns socket.");
 
     # Get the functions and make the object
-    sock.send('d1:q7:invalide');
-    data = sock.recv(BUFFER_SIZE);
-    benc = bdecode(data);
+    page = 0;
+    availableFunctions = {};
+    while True:
+        sock.send('d1:q24:Admin_availableFunctions4:argsd4:pagei' + str(page) + 'eee');
+        data = sock.recv(BUFFER_SIZE);
+        benc = bdecode(data);
+        for func in benc['availableFunctions']:
+            availableFunctions[func] = benc['availableFunctions'][func];
+        if (not 'more' in benc):
+            break;
+        page = page+1;
+
     argLists = {};
     cc = ("class Cjdns:\n"
         + "    def __init__(self, socket):\n"
@@ -130,10 +140,10 @@ def cjdns_connect(ipAddr, port, password):
         + "    def getMessage(self, txid):\n"
         + "        return _getMessage(self, txid);\n");
 
-    for func in benc['availableFunctions']:
+    for func in availableFunctions:
         argList = [];
         argLists[func] = argList;
-        funcDict = benc['availableFunctions'][func];
+        funcDict = availableFunctions[func];
         cc += "    def " + func + "(self";
 
         # If the arg is required, put it first,
@@ -174,8 +184,8 @@ def cjdns_connect(ipAddr, port, password):
 
     cjdns.functions = "";
     nl = "";
-    for func in benc['availableFunctions']:
-        funcDict = benc['availableFunctions'][func];
+    for func in availableFunctions:
+        funcDict = availableFunctions[func];
         cjdns.functions += nl + func + "(";
         nl = "\n";
         sep = "";
